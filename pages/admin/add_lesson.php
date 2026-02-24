@@ -13,7 +13,7 @@
     <title>Duralux || Customers</title>
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
-    <?php include "../includes/css_scripts_head.php"; ?>
+    <?php include "includes/css_scripts_head.php"; ?>
     <!--! END: Custom CSS-->
     <!-- DataTables CSS -->
     <!--! HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries !-->
@@ -28,14 +28,14 @@
     <!--! ================================================================ !-->
     <!--! [Start] Navigation Manu !-->
     <!--! ================================================================ !-->
-    <?php include "../includes/sidebar.php"; ?>
+    <?php include "includes/sidebar.php"; ?>
     <!--! ================================================================ !-->
     <!--! [End]  Navigation Manu !-->
     <!--! ================================================================ !-->
     <!--! ================================================================ !-->
     <!--! [Start] Header !-->
     <!--! ================================================================ !-->
-    <?php include "../includes/header.php"; ?>
+    <?php include "includes/header.php"; ?>
     <!--! ================================================================ !-->
     <!--! [End] Header !-->
     <!--! ================================================================ !-->
@@ -181,7 +181,7 @@
             <!-- [ Main Content ] end -->
         </div>
         <!-- [ Footer ] start -->
-        <?php include "../includes/footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
         <!-- [ Footer ] end -->
     </main>
     <!--! ================================================================ !-->
@@ -228,7 +228,7 @@
     <!--! ================================================================ !-->
     <!--! BEGIN: Theme Customizer !-->
     <!--! ================================================================ !-->
-    <?php include "../includes/customizer2.php"; ?>
+    <?php include "includes/customizer2.php"; ?>
 
     <!--! ================================================================ !-->
     <!--! [End] Theme Customizer !-->
@@ -275,10 +275,8 @@
     <!--! Footer Script !-->
     <!--! ================================================================ !-->
     <!--! BEGIN: Vendors JS !-->
-   <?php include "../includes/scripts.php"; ?>
+   <?php include "includes/scripts.php"; ?>
     <!-- DataTables JS -->
-    <script src="../../assets/vendors/js/dataTables.min.js"></script>
-    <script src="../../assets/vendors/js/dataTables.bs5.min.js"></script>
     <script>
     $(document).ready(function() {
         $('#myTable').DataTable({
