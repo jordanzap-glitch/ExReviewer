@@ -1,7 +1,7 @@
-<div class="theme-customizer" style="position:fixed;right:15px;bottom:15px;z-index:99999;">
+<div class="theme-customizer">
         <div class="customizer-handle">
-            <a href="javascript:void(0);" class="cutomizer-open-trigger bg-primary" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;padding:6px;border-radius:6px;">
-                <i class="feather-settings" style="font-size:16px;"></i>
+            <a href="javascript:void(0);" class="cutomizer-open-trigger bg-primary">
+                <i class="feather-settings"></i>
             </a>
         </div>
         <div class="customizer-sidebar-wrapper">
