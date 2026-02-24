@@ -14,6 +14,7 @@
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
     <?php include "includes/css_scripts_head.php"; ?>
+    <!-- DataTables CSS (CDN) -->
     <!--! END: Custom CSS-->
     <!-- DataTables CSS -->
     <!--! HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries !-->
@@ -121,52 +122,76 @@
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table id="myTable" class="table table-hover mb-0">
-                                        <thead>
+                                    <table id="myTable" class="table table-striped table-hover align-middle mb-0">
+                                        <thead class="table-light">
                                             <tr>
-                                                <th>Lesson</th>
-                                                <th>Section</th>
-                                                <th>Year</th>
-                                                <th>Action</th>
+                                                <th class="fw-semibold">Lesson</th>
+                                                <th class="fw-semibold text-center" style="width:120px">Section</th>
+                                                <th class="fw-semibold text-center" style="width:120px">Year</th>
+                                                <th class="fw-semibold text-end" style="width:140px">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td>Intro to Algebra</td>
-                                                <td>A</td>
-                                                <td>2026</td>
                                                 <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-text bg-soft-primary text-primary rounded-circle me-3" style="width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;">A</div>
+                                                        <div>
+                                                            <div class="fw-semibold">Intro to Algebra</div>
+                                                            <div class="fs-12 text-muted">Basic concepts and fundamentals</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">A</td>
+                                                <td class="text-center">2026</td>
+                                                <td class="text-end">
+                                                    <a href="javascript:void(0);" class="me-2" title="Edit">
+                                                        <div class="avatar-text bg-white border text-primary" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;"><i class="feather-edit"></i></div>
                                                     </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
+                                                    <a href="javascript:void(0);" title="Delete">
+                                                        <div class="avatar-text bg-white border text-danger" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;"><i class="feather-trash-2"></i></div>
                                                     </a>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td>Advanced Geometry</td>
-                                                <td>B</td>
-                                                <td>2025</td>
                                                 <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-text bg-soft-success text-success rounded-circle me-3" style="width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;">G</div>
+                                                        <div>
+                                                            <div class="fw-semibold">Advanced Geometry</div>
+                                                            <div class="fs-12 text-muted">Proofs and theorems</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">B</td>
+                                                <td class="text-center">2025</td>
+                                                <td class="text-end">
+                                                    <a href="javascript:void(0);" class="me-2" title="Edit">
+                                                        <div class="avatar-text bg-white border text-primary" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;"><i class="feather-edit"></i></div>
                                                     </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
+                                                    <a href="javascript:void(0);" title="Delete">
+                                                        <div class="avatar-text bg-white border text-danger" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;"><i class="feather-trash-2"></i></div>
                                                     </a>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td>Physics Basics</td>
-                                                <td>C</td>
-                                                <td>2024</td>
                                                 <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-text bg-soft-warning text-warning rounded-circle me-3" style="width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;">P</div>
+                                                        <div>
+                                                            <div class="fw-semibold">Physics Basics</div>
+                                                            <div class="fs-12 text-muted">Introductory mechanics</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">C</td>
+                                                <td class="text-center">2024</td>
+                                                <td class="text-end">
+                                                    <a href="javascript:void(0);" class="me-2" title="Edit">
+                                                        <div class="avatar-text bg-white border text-primary" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;"><i class="feather-edit"></i></div>
                                                     </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
+                                                    <a href="javascript:void(0);" title="Delete">
+                                                        <div class="avatar-text bg-white border text-danger" style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;"><i class="feather-trash-2"></i></div>
                                                     </a>
                                                 </td>
                                             </tr>
@@ -276,6 +301,9 @@
     <!--! ================================================================ !-->
     <!--! BEGIN: Vendors JS !-->
    <?php include "includes/scripts.php"; ?>
+        <!-- DataTables JS (CDN) -->
+        <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <!-- DataTables JS -->
     <script>
     $(document).ready(function() {

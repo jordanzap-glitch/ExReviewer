@@ -2,7 +2,7 @@
     <!-- vendors.min.js {always must need to be top} -->
     <script src="../../assets/vendors/js/daterangepicker.min.js"></script>
     <script src="../../assets/vendors/js/dataTables.min.js"></script>
-    <script src="assets/vendors/js/dataTables.bs5.min.js"></script>
+    <script src="../../assets/vendors/js/dataTables.bs5.min.js"></script>
     <script src="../../assets/vendors/js/apexcharts.min.js"></script>
     <script src="../../assets/vendors/js/circle-progress.min.js"></script>
     <script src="../../assets/vendors/js/select2.min.js"></script>

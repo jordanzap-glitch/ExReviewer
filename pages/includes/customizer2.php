@@ -1,7 +1,7 @@
-<div class="theme-customizer">
+<div class="theme-customizer" style="position:fixed;left:50%;transform:translateX(-50%);bottom:15px;z-index:99999;">
         <div class="customizer-handle">
-            <a href="javascript:void(0);" class="cutomizer-open-trigger bg-primary">
-                <i class="feather-settings"></i>
+            <a href="javascript:void(0);" class="cutomizer-open-trigger bg-primary" style="width:48px;height:48px;display:inline-flex;align-items:center;justify-content:center;font-size:18px;padding:0;border-radius:50%;box-shadow:0 6px 18px rgba(0,0,0,0.08);">
+                <i class="feather-settings" style="font-size:20px;color:#fff;"></i>
             </a>
         </div>
         <div class="customizer-sidebar-wrapper">
@@ -12,6 +12,36 @@
                 </a>
             </div>
             <div class="customizer-sidebar-body position-relative p-4" data-scrollbar-target="#psScrollbarInit">
+                <!--! BEGIN: [Navigation] !-->
+                <div class="position-relative px-3 pb-3 pt-4 mt-3 mb-5 border border-gray-2 theme-options-set">
+                    <label class="py-1 px-2 fs-8 fw-bold text-uppercase text-muted text-spacing-2 bg-white border border-gray-2 position-absolute rounded-2 options-label" style="top: -12px">Navigation</label>
+                    <div class="row g-2 theme-options-items app-navigation" id="appNavigationList">
+                        <div class="col-6 text-center single-option">
+                            <input type="radio" class="btn-check" id="app-navigation-light" name="app-navigation" value="1" data-app-navigation="app-navigation-light" checked>
+                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-navigation-light">Light</label>
+                        </div>
+                        <div class="col-6 text-center single-option">
+                            <input type="radio" class="btn-check" id="app-navigation-dark" name="app-navigation" value="2" data-app-navigation="app-navigation-dark">
+                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-navigation-dark">Dark</label>
+                        </div>
+                    </div>
+                </div>
+                <!--! END: [Navigation] !-->
+                <!--! BEGIN: [Header] !-->
+                <div class="position-relative px-3 pb-3 pt-4 mt-3 mb-5 border border-gray-2 theme-options-set mt-5">
+                    <label class="py-1 px-2 fs-8 fw-bold text-uppercase text-muted text-spacing-2 bg-white border border-gray-2 position-absolute rounded-2 options-label" style="top: -12px">Header</label>
+                    <div class="row g-2 theme-options-items app-header" id="appHeaderList">
+                        <div class="col-6 text-center single-option">
+                            <input type="radio" class="btn-check" id="app-header-light" name="app-header" value="1" data-app-header="app-header-light" checked>
+                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-header-light">Light</label>
+                        </div>
+                        <div class="col-6 text-center single-option">
+                            <input type="radio" class="btn-check" id="app-header-dark" name="app-header" value="2" data-app-header="app-header-dark">
+                            <label class="py-2 fs-9 fw-bold text-dark text-uppercase text-spacing-1 border border-gray-2 w-100 h-100 c-pointer position-relative options-label" for="app-header-dark">Dark</label>
+                        </div>
+                    </div>
+                </div>
+                <!--! END: [Header] !-->
                 <!--! BEGIN: [Skins] !-->
                 <div class="position-relative px-3 pb-3 pt-4 mt-3 mb-5 border border-gray-2 theme-options-set">
                     <label class="py-1 px-2 fs-8 fw-bold text-uppercase text-muted text-spacing-2 bg-white border border-gray-2 position-absolute rounded-2 options-label" style="top: -12px">Skins</label>
@@ -124,12 +154,6 @@
                 <!--! END: [Typography] !-->
             </div>
             <div class="customizer-sidebar-footer px-4 ht-60 border-top d-flex align-items-center gap-2">
-                <div class="flex-fill w-50">
-                    <a href="javascript:void(0);" class="btn btn-danger" data-style="reset-all-common-style">Reset</a>
-                </div>
-                <div class="flex-fill w-50">
-                    <a href="https://www.themewagon.com/themes/Duralux-admin" target="_blank" class="btn btn-primary">Download</a>
-                </div>
             </div>
         </div>
     </div>
