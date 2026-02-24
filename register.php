@@ -10,7 +10,7 @@
     <meta name="author" content="theme_ocean">
     <!--! The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags !-->
     <!--! BEGIN: Apps Title-->
-    <title>Duralux || Login Creative</title>
+    <title>Duralux || Register Minimal</title>
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
     <link rel="shortcut icon" type="image/x-icon" href="assets/images/favicon.ico">
@@ -36,51 +36,58 @@
     <!--! ================================================================ !-->
     <!--! [Start] Main Content !-->
     <!--! ================================================================ !-->
-    <main class="auth-creative-wrapper">
-        <div class="auth-creative-inner">
-            <div class="creative-card-wrapper">
-                <div class="card my-4 overflow-hidden" style="z-index: 1">
-                    <div class="row flex-1 g-0">
-                        <div class="col-lg-6 h-100 my-auto order-1 order-lg-0">
-                            <div class="bg-white p-1 rounded-circle shadow-lg position-absolute translate-middle top-50 start-50 d-none d-lg-block" style="width: 130px; height: 130px; border-radius: 50%; overflow: hidden;">
-                                <img src="assets/images/psu.png" alt="" class="img-fluid w-100 h-100 rounded-circle" style="object-fit: cover;">
+    <main class="auth-minimal-wrapper">
+        <div class="auth-minimal-inner">
+            <div class="minimal-card-wrapper">
+                <div class="card mb-4 mt-5 mx-4 mx-sm-0 position-relative">
+                    <div class="bg-white shadow-lg position-absolute translate-middle top-0 start-50" style="width:112px;height:112px;padding:6px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                        <img src="assets/images/psu.png" alt="" class="img-fluid" style="width:100%;height:100%;object-fit:cover;display:block;">
+                    </div>
+                    <div class="card-body p-sm-5">
+                        <h2 class="fs-20 fw-bolder mb-4">Register</h2>
+                        <form action="index.html" class="w-100 mt-4 pt-2">
+                            <div class="mb-4">
+                                <input type="text" class="form-control" placeholder="Full Name" required>
                             </div>
-                            <div class="creative-card-body card-body p-sm-5">
-                                <h2 class="fs-20 fw-bolder mb-4">Login</h2>
-                                <h4 class="fs-13 fw-bold mb-2">Login to your account</h4>
-                                <p class="fs-12 fw-medium text-muted">Thank you for get back <strong>Nelel</strong> web applications, let's access our the best recommendation for you.</p>
-                                <form action="index.html" class="w-100 mt-4 pt-2">
-                                    <div class="mb-4">
-                                        <input type="email" class="form-control" placeholder="Email or Username" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <input type="password" class="form-control" placeholder="Password" required>
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div>
-                                            <div class="custom-control custom-checkbox">
-                                                <input type="checkbox" class="custom-control-input" id="rememberMe">
-                                                <label class="custom-control-label c-pointer" for="rememberMe">Remember Me</label>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <a href="auth-reset-creative.html" class="fs-11 text-primary">Forget password?</a>
-                                        </div>
-                                    </div>
-                                    <div class="mt-5">
-                                        <button type="submit" class="btn btn-lg btn-primary w-100">Login</button>
-                                    </div>
-                                </form>
-                                <div class="mt-5 text-muted">
-                                    <span> Don't have an account?</span>
-                                    <a href="register.php" class="fw-bold">Create an Account</a>
+                            <div class="mb-4">
+                                <input type="email" class="form-control" placeholder="Email" required>
+                            </div>
+                            <div class="mb-4">
+                                <input type="tel" class="form-control" placeholder="Username" required>
+                            </div>
+                            <div class="mb-4 generate-pass">
+                                <div class="input-group field">
+                                    <input type="password" class="form-control password" id="newPassword" placeholder="Password Confirm">
+                                    <div class="input-group-text c-pointer gen-pass" data-bs-toggle="tooltip" title="Generate Password"><i class="feather-hash"></i></div>
+                                    <div class="input-group-text border-start bg-gray-2 c-pointer show-pass" data-bs-toggle="tooltip" title="Show/Hide Password"><i></i></div>
+                                </div>
+                                <div class="progress-bar mt-2">
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-lg-6 bg-dark order-0 order-lg-1">
-                            <div class="h-100 w-100 overflow-hidden">
-                                <img src="assets/images/EE-student.png" alt="" class="w-100 h-100" style="object-fit: cover;">
+                            <div class="mb-4">
+                                <input type="password" class="form-control" placeholder="Password again" required>
                             </div>
+                            <div class="mt-4">
+                                <div class="custom-control custom-checkbox mb-2">
+                                    <input type="checkbox" class="custom-control-input" id="receiveMial" required>
+                                    <label class="custom-control-label c-pointer text-muted" for="receiveMial" style="font-weight: 400 !important">Yes, I wnat to receive Duralux community emails</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="termsCondition" required>
+                                    <label class="custom-control-label c-pointer text-muted" for="termsCondition" style="font-weight: 400 !important">I agree to all the <a href="">Terms &amp; Conditions</a> and <a href="">Fees</a>.</label>
+                                </div>
+                            </div>
+                            <div class="mt-5">
+                                <button type="submit" class="btn btn-lg btn-primary w-100">Create Account</button>
+                            </div>
+                        </form>
+                        <div class="mt-5 text-muted">
+                            <span>Already have an account?</span>
+                            <a href="index.php" class="fw-bold">Login</a>
                         </div>
                     </div>
                 </div>
@@ -237,6 +244,7 @@
     <!--! BEGIN: Vendors JS !-->
     <script src="assets/vendors/js/vendors.min.js"></script>
     <!-- vendors.min.js {always must need to be top} -->
+    <script src="assets/vendors/js/lslstrength.min.js"></script>
     <!--! END: Vendors JS !-->
     <!--! BEGIN: Apps Init  !-->
     <script src="assets/js/common-init.min.js"></script>
