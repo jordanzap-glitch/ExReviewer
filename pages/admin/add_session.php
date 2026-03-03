@@ -10,7 +10,7 @@
     <meta name="author" content="theme_ocean">
     <!--! The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags !-->
     <!--! BEGIN: Apps Title-->
-    <title>Duralux || Customers</title>
+    <title>EEReviewer || Sessions</title>
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
     <?php include "includes/css_scripts_head.php"; ?>
@@ -49,11 +49,11 @@
             <div class="page-header">
                 <div class="page-header-left d-flex align-items-center">
                     <div class="page-header-title">
-                        <h5 class="m-b-10">Lessons</h5>
+                        <h5 class="m-b-10">Sessions</h5>
                     </div>
                     <ul class="breadcrumb">
                         <li class="breadcrumb-item"><a href="index.html">Home</a></li>
-                        <li class="breadcrumb-item">Lessons</li>
+                        <li class="breadcrumb-item">Sessions</li>
                     </ul>
                 </div>
                 <div class="page-header-right ms-auto">
@@ -97,9 +97,9 @@
                                     </a>
                                 </div>
                             </div>
-                            <a href="javascript:void(0);" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createLessonModal">
+                            <a href="javascript:void(0);" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSessionModal">
                                 <i class="feather-plus me-2"></i>
-                                <span>Create Lesson</span>
+                                <span>Create Session</span>
                             </a>
                         </div>
                     </div>
@@ -118,50 +118,50 @@
                     <div class="col-lg-12">
                         <div class="card stretch stretch-full">
                             <div class="card-header bg-soft-info border-soft-info text-info d-flex align-items-center justify-content-between">
-                                    <h5 class="card-title mb-0">Lessons</h5>
+                                    <h5 class="card-title mb-0">Sessions</h5>
                                 </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
                                     <table id="myTable" class="table table-hover mb-0">
                                         <thead>
                                             <tr>
-                                                <th>Lesson</th>
-                                                <th>Section</th>
-                                                <th>Year</th>
+                                                <th>SY Start</th>
+                                                <th>SY End</th>
+                                                <th>Status</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td>Intro to Algebra</td>
-                                                <td>A</td>
-                                                <td>2026</td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Advanced Geometry</td>
-                                                <td>B</td>
-                                                <td>2025</td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Physics Basics</td>
-                                                <td>C</td>
                                                 <td>2024</td>
+                                                <td>2025</td>
+                                                <td><span class="badge bg-success">Active</span></td>
+                                                <td>
+                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                        <i class="feather-edit"></i>
+                                                    </a>
+                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                        <i class="feather-trash-2"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>2023</td>
+                                                <td>2024</td>
+                                                <td><span class="badge bg-secondary">Inactive</span></td>
+                                                <td>
+                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                        <i class="feather-edit"></i>
+                                                    </a>
+                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                        <i class="feather-trash-2"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>2025</td>
+                                                <td>2026</td>
+                                                <td><span class="badge bg-secondary">Inactive</span></td>
                                                 <td>
                                                     <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
                                                         <i class="feather-edit"></i>
@@ -234,50 +234,34 @@
     <!--! ================================================================ !-->
     <!--! [End] Theme Customizer !-->
     <!--! ================================================================ !-->
-    <!-- Create Lesson Modal -->
-    <div class="modal fade" id="createLessonModal" tabindex="-1" aria-labelledby="createLessonLabel" aria-hidden="true">
+    <!-- Create Session Modal -->
+    <div class="modal fade" id="createSessionModal" tabindex="-1" aria-labelledby="createSessionLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="createLessonLabel">Create Lesson</h5>
+                    <h5 class="modal-title" id="createSessionLabel">Create Session</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="lessonTitle" class="form-label">Lesson</label>
-                        <input type="text" id="lessonTitle" class="form-control" placeholder="Enter lesson title">
+                        <label for="syStart" class="form-label">SY Start</label>
+                        <input type="number" id="syStart" class="form-control" placeholder="Enter start year (e.g., 2024)">
                     </div>
                     <div class="mb-3">
-                        <label for="lessonSubject" class="form-label">Subject</label>
-                        <select id="lessonSubject" class="form-select">
-                            <option value="">-- Select Subject --</option>
-                            <option value="Calculus I">Calculus I</option>
-                            <option value="Physics I">Physics I</option>
-                            <option value="Intro to Programming">Intro to Programming</option>
-                        </select>
+                        <label for="syEnd" class="form-label">SY End</label>
+                        <input type="number" id="syEnd" class="form-control" placeholder="Enter end year (e.g., 2025)">
                     </div>
                     <div class="mb-3">
-                        <label for="lessonSection" class="form-label">Section</label>
-                        <select id="lessonSection" class="form-select">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="lessonYear" class="form-label">Year</label>
-                        <select id="lessonYear" class="form-select">
-                            <option value="2024">2024</option>
-                            <option value="2025">2025</option>
-                            <option value="2026">2026</option>
-                            <option value="2027">2027</option>
-                            <option value="2028">2028</option>
+                        <label for="sessionStatus" class="form-label">Status</label>
+                        <select id="sessionStatus" class="form-select">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
                         </select>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button id="saveLessonBtn" type="button" class="btn btn-primary" data-bs-dismiss="modal">Add Lesson</button>
+                    <button id="saveSessionBtn" type="button" class="btn btn-primary" data-bs-dismiss="modal">Add Session</button>
                 </div>
             </div>
         </div>
@@ -285,31 +269,24 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        var btn = document.getElementById('saveLessonBtn');
+        var btn = document.getElementById('saveSessionBtn');
         if (btn) {
             btn.addEventListener('click', function () {
-                var title = document.getElementById('lessonTitle').value.trim();
-                var subject = document.getElementById('lessonSubject').value;
-                var section = document.getElementById('lessonSection').value;
-                var year = document.getElementById('lessonYear').value;
-                if (!title) {
-                    alert('Please enter a lesson title');
+                var start = document.getElementById('syStart').value.trim();
+                var end = document.getElementById('syEnd').value.trim();
+                var status = document.getElementById('sessionStatus').value;
+                if (!start || !end) {
+                    alert('Please enter both start and end years');
                     return;
                 }
-                if (!subject) {
-                    alert('Please select a subject');
+                var s = parseInt(start, 10);
+                var e = parseInt(end, 10);
+                if (isNaN(s) || isNaN(e) || s >= e) {
+                    alert('Please provide a valid year range where start < end');
                     return;
                 }
-                if (!section) {
-                    alert('Please select a section');
-                    return;
-                }
-                if (!year) {
-                    alert('Please select a year');
-                    return;
-                }
-                // Temporary behaviour: log the lesson details. Replace with AJAX if needed.
-                console.log('New lesson:', { title: title, subject: subject, section: section, year: year });
+                // Temporary behaviour: log the new session. Replace with AJAX if needed.
+                console.log('New session:', { sy_start: s, sy_end: e, status: status });
             });
         }
     });
