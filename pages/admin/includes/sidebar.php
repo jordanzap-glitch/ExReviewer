@@ -48,6 +48,7 @@
                         </a>
                         <ul class="nxl-submenu">
                             <li class="nxl-item"><a class="nxl-link" href="add_session.php">Sessions</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="add_term.php">Terms (Semester)</a></li>
                         </ul>
                     </li>
                 </ul>

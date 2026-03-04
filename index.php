@@ -10,7 +10,7 @@
     <meta name="author" content="theme_ocean">
     <!--! The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags !-->
     <!--! BEGIN: Apps Title-->
-    <title>Duralux || Login Creative</title>
+    <title>PSU || Login</title>
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
     <link rel="shortcut icon" type="image/x-icon" href="assets/images/favicon.ico">
@@ -48,7 +48,7 @@
                             <div class="creative-card-body card-body p-sm-5">
                                 <h2 class="fs-20 fw-bolder mb-4">Login</h2>
                                 <h4 class="fs-13 fw-bold mb-2">Login to your account</h4>
-                                <p class="fs-12 fw-medium text-muted">Thank you for get back <strong>Nelel</strong> web applications, let's access our the best recommendation for you.</p>
+                                <p class="fs-12 fw-medium text-muted">Thank you for get back <strong>PSU</strong> web applications, let's access our the best recommendation for you.</p>
                                 <form action="index.html" class="w-100 mt-4 pt-2">
                                     <div class="mb-4">
                                         <input type="email" class="form-control" placeholder="Email or Username" required>

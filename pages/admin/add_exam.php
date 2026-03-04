@@ -183,64 +183,43 @@
                     </div>
                 </div>
             </div>
-            <div class="row mt-3">
-                <div class="col-lg-12">
-                    <div class="card stretch stretch-full">
-                        <div class="card-header bg-soft-primary border-soft-primary text-primary d-flex align-items-center justify-content-between">
-                            <h5 class="card-title mb-0">Existing Questions</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table id="myTable" class="table table-hover mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Question</th>
-                                            <th>A</th>
-                                            <th>B</th>
-                                            <th>C</th>
-                                            <th>D</th>
-                                            <th>Correct</th>
-                                            <th>Subject</th>
-                                            <th>Year</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>What is the derivative of x^2?</td>
-                                            <td>2x</td>
-                                            <td>x</td>
-                                            <td>1</td>
-                                            <td>0</td>
-                                            <td>A</td>
-                                            <td>Calculus I</td>
-                                            <td>2024</td>
-                                            <td>
-                                                <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit"><i class="feather-edit"></i></a>
-                                                <a href="javascript:void(0);" class="text-danger fs-5" title="Delete"><i class="feather-trash-2"></i></a>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Which language uses printf?</td>
-                                            <td>Python</td>
-                                            <td>JavaScript</td>
-                                            <td>C</td>
-                                            <td>Ruby</td>
-                                            <td>C</td>
-                                            <td>Intro to Programming</td>
-                                            <td>2024</td>
-                                            <td>
-                                                <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit"><i class="feather-edit"></i></a>
-                                                <a href="javascript:void(0);" class="text-danger fs-5" title="Delete"><i class="feather-trash-2"></i></a>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+
+            <div class="main-content">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="card stretch stretch-full">
+                            <div class="card-header bg-soft-info border-soft-info text-info d-flex align-items-center justify-content-between">
+                                <h5 class="card-title mb-0">Saved Questions</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="p-3">
+                                    <div class="table-responsive">
+                                        <table id="myTable" class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Question</th>
+                                                    <th>A</th>
+                                                    <th>B</th>
+                                                    <th>C</th>
+                                                    <th>D</th>
+                                                    <th>Correct</th>
+                                                    <th>Subject</th>
+                                                    <th>Year</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- saved questions will be appended here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
             <!-- [ Main Content ] end -->
         </div>
         <!-- [ Footer ] start -->

@@ -7,6 +7,7 @@
     <script src="../../assets/vendors/js/circle-progress.min.js"></script>
     <script src="../../assets/vendors/js/select2.min.js"></script>
     <script src="../../assets/vendors/js/select2-active.min.js"></script>
+    <script src="../../assets/vendors/js/datepicker.min.js"></script>
     <!--! END: Vendors JS !-->
     <!--! BEGIN: Apps Init  !-->
     <script src="../../assets/js/common-init.min.js"></script>
@@ -15,3 +16,5 @@
     <!--! END: Apps Init !-->
     <!--! BEGIN: Theme Customizer  !-->
     <script src="../../assets/js/theme-customizer-init.min.js"></script>
+    <script src="../../assets/vendors/js/tagify.min.js"></script>
+    <script src="../../assets/vendors/js/tagify-data.min.js"></script>
