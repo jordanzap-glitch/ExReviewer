@@ -1,3 +1,36 @@
+<?php include "includes/init.php"; ?>
+<?php
+// DB and functions
+require_once __DIR__ . '/../../db/dbcon.php';
+require_once __DIR__ . '/functions/sessions.php';
+
+$session_msg = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_session'])) {
+    // CSRF protection: verify token
+    if (empty($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+        $_SESSION['session_msg'] = ['type' => 'danger', 'text' => 'Invalid CSRF token. Please try again.'];
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+
+    // Accept values like "2024" or "2024-01" (from month picker) and extract the year
+    $sy_start_raw = $_POST['sy_start'] ?? '';
+    $sy_end_raw = $_POST['sy_end'] ?? '';
+    $sy_start = intval(substr($sy_start_raw, 0, 4));
+    $sy_end = intval(substr($sy_end_raw, 0, 4));
+    $status = $_POST['session_status'] ?? 'Inactive';
+    $is_active = ($status === 'Active') ? true : false;
+    $res = add_session($conn, $sy_start, $sy_end, $is_active);
+    if ($res['success']) {
+        $_SESSION['session_msg'] = ['type' => 'success', 'text' => 'Session added successfully.'];
+    } else {
+        $_SESSION['session_msg'] = ['type' => 'danger', 'text' => $res['error'] ?? 'Failed to add session.'];
+    }
+    // PRG: redirect to avoid duplicate resubmission
+    header('Location: ' . $_SERVER['REQUEST_URI']);
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="zxx">
 
@@ -112,6 +145,18 @@
             </div>
             
             <!-- [ page-header ] end -->
+            <?php
+            // Show message stored in session (after PRG) or local variable
+            if (empty($session_msg) && !empty($_SESSION['session_msg'])) {
+                $session_msg = $_SESSION['session_msg'];
+                unset($_SESSION['session_msg']);
+            }
+            ?>
+            <?php if (!empty($session_msg)) : ?>
+                <div class="alert alert-<?php echo $session_msg['type']; ?> auto-dismiss">
+                    <?php echo htmlspecialchars($session_msg['text']); ?>
+                </div>
+            <?php endif; ?>
             <!-- [ Main Content ] start -->
             <div class="main-content">
                 <div class="row">
@@ -132,45 +177,32 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr>
-                                                <td>2024</td>
-                                                <td>2025</td>
-                                                <td><span class="badge bg-success">Active</span></td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>2023</td>
-                                                <td>2024</td>
-                                                <td><span class="badge bg-secondary">Inactive</span></td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>2025</td>
-                                                <td>2026</td>
-                                                <td><span class="badge bg-secondary">Inactive</span></td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
+                                            <?php
+                                            $sessions = get_sessions($conn);
+                                            if (!empty($sessions)) {
+                                                foreach ($sessions as $s) {
+                                                    $badge = $s['is_active'] ? 'bg-success' : 'bg-secondary';
+                                                    $status_text = $s['is_active'] ? 'Active' : 'Inactive';
+                                                    ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($s['sy_start']); ?></td>
+                                                        <td><?php echo htmlspecialchars($s['sy_end']); ?></td>
+                                                        <td><span class="badge <?php echo $badge; ?>"><?php echo $status_text; ?></span></td>
+                                                        <td>
+                                                            <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                                <i class="feather-edit"></i>
+                                                            </a>
+                                                            <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                                <i class="feather-trash-2"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                            } else {
+                                                echo '<tr><td colspan="4">No sessions found.</td></tr>';
+                                            }
+                                            ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -234,10 +266,10 @@
     <!--! ================================================================ !-->
     <!--! [End] Theme Customizer !-->
     <!--! ================================================================ !-->
-    <!-- Create Session Modal -->
+    <!-- Create Session Modal (form POST) -->
     <div class="modal fade" id="createSessionModal" tabindex="-1" aria-labelledby="createSessionLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
+            <form method="post" class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createSessionLabel">Create Session</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -245,15 +277,15 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="syStart" class="form-label">SY Start</label>
-                        <input type="number" id="syStart" class="form-control" placeholder="Enter start year (e.g., 2024)">
+                        <input type="month" id="syStart" name="sy_start" class="form-control" placeholder="Select start year" required>
                     </div>
                     <div class="mb-3">
                         <label for="syEnd" class="form-label">SY End</label>
-                        <input type="number" id="syEnd" class="form-control" placeholder="Enter end year (e.g., 2025)">
+                        <input type="month" id="syEnd" name="sy_end" class="form-control" placeholder="Select end year" required>
                     </div>
                     <div class="mb-3">
                         <label for="sessionStatus" class="form-label">Status</label>
-                        <select id="sessionStatus" class="form-select">
+                        <select id="sessionStatus" name="session_status" class="form-select">
                             <option value="Active">Active</option>
                             <option value="Inactive">Inactive</option>
                         </select>
@@ -261,36 +293,12 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button id="saveSessionBtn" type="button" class="btn btn-primary" data-bs-dismiss="modal">Add Session</button>
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                    <button type="submit" name="add_session" class="btn btn-primary">Add Session</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var btn = document.getElementById('saveSessionBtn');
-        if (btn) {
-            btn.addEventListener('click', function () {
-                var start = document.getElementById('syStart').value.trim();
-                var end = document.getElementById('syEnd').value.trim();
-                var status = document.getElementById('sessionStatus').value;
-                if (!start || !end) {
-                    alert('Please enter both start and end years');
-                    return;
-                }
-                var s = parseInt(start, 10);
-                var e = parseInt(end, 10);
-                if (isNaN(s) || isNaN(e) || s >= e) {
-                    alert('Please provide a valid year range where start < end');
-                    return;
-                }
-                // Temporary behaviour: log the new session. Replace with AJAX if needed.
-                console.log('New session:', { sy_start: s, sy_end: e, status: status });
-            });
-        }
-    });
-    </script>
     <!--! ================================================================ !-->
     <!--! Footer Script !-->
     <!--! ================================================================ !-->
@@ -306,6 +314,15 @@
             paging: true,
             searching: true
         });
+    });
+    </script>
+    <script>
+    // Auto-dismiss alerts with class .auto-dismiss after 3 seconds
+    document.addEventListener('DOMContentLoaded', function () {
+        var el = document.querySelector('.auto-dismiss');
+        if (el) {
+            setTimeout(function () { el.remove(); }, 3000);
+        }
     });
     </script>
     <!--! END: Theme Customizer !-->

@@ -1,3 +1,32 @@
+<?php include "includes/init.php"; ?>
+
+
+<?php
+// DB and functions
+require_once __DIR__ . '/../../db/dbcon.php';
+require_once __DIR__ . '/functions/subjects.php';
+
+$subject_msg = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_subject'])) {
+    // CSRF protection: verify token
+    if (empty($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+        $_SESSION['subject_msg'] = ['type' => 'danger', 'text' => 'Invalid CSRF token. Please try again.'];
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+    $name = $_POST['subject_name'] ?? '';
+    $code = $_POST['subject_code'] ?? '';
+    $res = add_subject($conn, $name, $code);
+    if ($res['success']) {
+        $_SESSION['subject_msg'] = ['type' => 'success', 'text' => 'Subject added successfully.'];
+    } else {
+        $_SESSION['subject_msg'] = ['type' => 'danger', 'text' => $res['error'] ?? 'Failed to add subject.'];
+    }
+    // PRG: redirect to avoid form resubmission on refresh
+    header('Location: ' . $_SERVER['REQUEST_URI']);
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="zxx">
 
@@ -112,6 +141,18 @@
             </div>
             
             <!-- [ page-header ] end -->
+            <?php
+            // Show message stored in session (after PRG) or local variable
+            if (empty($subject_msg) && !empty($_SESSION['subject_msg'])) {
+                $subject_msg = $_SESSION['subject_msg'];
+                unset($_SESSION['subject_msg']);
+            }
+            ?>
+            <?php if (!empty($subject_msg)) : ?>
+                <div class="alert alert-<?php echo $subject_msg['type']; ?> auto-dismiss">
+                    <?php echo htmlspecialchars($subject_msg['text']); ?>
+                </div>
+            <?php endif; ?>
             <!-- [ Main Content ] start -->
             <div class="main-content">
                 <div class="row">
@@ -127,50 +168,33 @@
                                             <tr>
                                                 <th>Subject</th>
                                                 <th>Code</th>
-                                                <th>Year</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr>
-                                                <td>Calculus I</td>
-                                                <td>MATH101</td>
-                                                <td>2024</td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Physics I</td>
-                                                <td>PHYS101</td>
-                                                <td>2025</td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Introduction to Programming</td>
-                                                <td>CS101</td>
-                                                <td>2024</td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
+                                            <?php
+                                            $subjects = get_subjects($conn);
+                                            if (!empty($subjects)) {
+                                                foreach ($subjects as $sub) {
+                                                    ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($sub['name']); ?></td>
+                                                        <td><?php echo htmlspecialchars($sub['code']); ?></td>
+                                                        <td>
+                                                            <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                                <i class="feather-edit"></i>
+                                                            </a>
+                                                            <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                                <i class="feather-trash-2"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                            } else {
+                                                echo '<tr><td colspan="3">No subjects found.</td></tr>';
+                                            }
+                                            ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -234,68 +258,34 @@
     <!--! ================================================================ !-->
     <!--! [End] Theme Customizer !-->
     <!--! ================================================================ !-->
-    <!-- Create Subject Modal -->
+    <!-- Create Subject Modal (form POST) -->
     <div class="modal fade" id="createSubjectModal" tabindex="-1" aria-labelledby="createSubjectLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
+            <form method="post" class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createSubjectLabel">Create Subject</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="subjectName" class="form-label">Subject Name</label>
-                        <input type="text" id="subjectName" class="form-control" placeholder="Enter subject name">
-                    </div>
-                    <div class="mb-3">
-                        <label for="subjectCode" class="form-label">Subject Code</label>
-                        <input type="text" id="subjectCode" class="form-control" placeholder="Enter subject code (e.g., MATH101)">
-                    </div>
-                    <div class="mb-3">
-                        <label for="subjectYear" class="form-label">Year</label>
-                        <select id="subjectYear" class="form-select">
-                            <option value="2024">2024</option>
-                            <option value="2025">2025</option>
-                            <option value="2026">2026</option>
-                            <option value="2027">2027</option>
-                            <option value="2028">2028</option>
-                        </select>
-                    </div>
-                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button id="saveSubjectBtn" type="button" class="btn btn-primary" data-bs-dismiss="modal">Add Subject</button>
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                    <button type="submit" name="add_subject" class="btn btn-primary">Add Subject</button>
                 </div>
-            </div>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                                    $_SESSION['csrf_token']
+                                ); ?>">
+                                <button type="submit" name="add_subject" class="btn btn-primary">Add Subject</button>
+                </div>
+            </form>
         </div>
     </div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var btn = document.getElementById('saveSubjectBtn');
-        if (btn) {
-            btn.addEventListener('click', function () {
-                var name = document.getElementById('subjectName').value.trim();
-                var code = document.getElementById('subjectCode').value.trim();
-                var year = document.getElementById('subjectYear').value;
-                if (!name) {
-                    alert('Please enter a subject name');
-                    return;
-                }
-                if (!code) {
-                    alert('Please enter a subject code');
-                    return;
-                }
-                if (!year) {
-                    alert('Please select a year');
-                    return;
-                }
-                // Temporary behaviour: log the subject details. Replace with AJAX if needed.
-                console.log('New subject:', { name: name, code: code, year: year });
-            });
-        }
-    });
-    </script>
     <!--! ================================================================ !-->
     <!--! Footer Script !-->
     <!--! ================================================================ !-->
@@ -311,6 +301,15 @@
             paging: true,
             searching: true
         });
+    });
+    </script>
+    <script>
+    // Auto-dismiss alerts with class .auto-dismiss after 3 seconds
+    document.addEventListener('DOMContentLoaded', function () {
+        var el = document.querySelector('.auto-dismiss');
+        if (el) {
+            setTimeout(function () { el.remove(); }, 3000);
+        }
     });
     </script>
     <!--! END: Theme Customizer !-->

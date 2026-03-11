@@ -1,3 +1,79 @@
+<?php
+session_start();
+// Prevent caching so browser Back button won't show protected pages after logout
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+include 'db/dbcon.php';
+
+function login($conn)
+{
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if ($email === '' || $password === '') {
+            $_SESSION['login_error'] = 'Please provide email and password.';
+            return false;
+        }
+
+        $sql = "SELECT u.id, u.email, u.password, ut.name AS usertype_name FROM tbl_users u JOIN tbl_usertypes ut ON u.usertypes_id = ut.id WHERE u.email = ? LIMIT 1";
+        $stmt = mysqli_prepare($conn, $sql);
+        if (!$stmt) {
+            $_SESSION['login_error'] = 'Database error.';
+            return false;
+        }
+        mysqli_stmt_bind_param($stmt, 's', $email);
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
+        if ($row = mysqli_fetch_assoc($result)) {
+            $stored = $row['password'];
+            $usertype = strtolower($row['usertype_name'] ?? '');
+            if (!in_array($usertype, ['teacher', 'student'])) {
+                $_SESSION['login_error'] = 'Unauthorized user type.';
+                return false;
+            }
+            $ok = false;
+            // Support hashed passwords and plain-text fallback
+            if (function_exists('password_verify') && password_verify($password, $stored)) {
+                $ok = true;
+            }
+            if (!$ok && $password === $stored) {
+                $ok = true;
+            }
+            if ($ok) {
+                session_regenerate_id(true);
+                $_SESSION['user_id'] = $row['id'];
+                $_SESSION['email'] = $row['email'];
+                $_SESSION['usertype'] = $usertype;
+                $_SESSION['logged_in'] = true;
+                unset($_SESSION['login_error']);
+                // Redirect by user type to appropriate area
+                if ($usertype === 'teacher') {
+                    header('Location: pages/admin/index.php');
+                    exit;
+                } else {
+                    header('Location: student/index.php');
+                    exit;
+                }
+            } else {
+                $_SESSION['login_error'] = 'Invalid credentials.';
+                return false;
+            }
+        } else {
+            $_SESSION['login_error'] = 'Invalid credentials.';
+            return false;
+        }
+    }
+    return null;
+}
+
+login($conn);
+
+?>
+
+
 <!DOCTYPE html>
 <html lang="zxx">
 
@@ -49,12 +125,24 @@
                                 <h2 class="fs-20 fw-bolder mb-4">Login</h2>
                                 <h4 class="fs-13 fw-bold mb-2">Login to your account</h4>
                                 <p class="fs-12 fw-medium text-muted">Thank you for get back <strong>PSU</strong> web applications, let's access our the best recommendation for you.</p>
-                                <form action="index.html" class="w-100 mt-4 pt-2">
+                                <form method="post" class="w-100 mt-4 pt-2">
+                                    <?php if (!empty(
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        $_SESSION['login_error'] ?? ''
+                                    )) : ?>
+                                        <div class="alert alert-danger"><?php echo htmlspecialchars($_SESSION['login_error']); unset($_SESSION['login_error']); ?></div>
+                                    <?php endif; ?>
                                     <div class="mb-4">
-                                        <input type="email" class="form-control" placeholder="Email or Username" required>
+                                        <input type="email" name="email" class="form-control" placeholder="Email or Username" required>
                                     </div>
                                     <div class="mb-3">
-                                        <input type="password" class="form-control" placeholder="Password" required>
+                                        <input type="password" name="password" class="form-control" placeholder="Password" required>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div>
@@ -68,7 +156,7 @@
                                         </div>
                                     </div>
                                     <div class="mt-5">
-                                        <button type="submit" class="btn btn-lg btn-primary w-100">Login</button>
+                                        <button type="submit" name="login" class="btn btn-lg btn-primary w-100">Login</button>
                                     </div>
                                 </form>
                                 <div class="mt-5 text-muted">

@@ -1,3 +1,4 @@
+<?php // header markup only - session and auth handled in includes/init.php ?>
 <header class="nxl-header">
         <div class="header-wrapper">
             <!--! [Start] Header Left !-->
@@ -483,7 +484,7 @@
                                 <span>Account Settings</span>
                             </a>
                             <div class="dropdown-divider"></div>
-                            <a href="./auth-login-minimal.html" class="dropdown-item">
+                            <a href="../../logout.php" class="dropdown-item">
                                 <i class="feather-log-out"></i>
                                 <span>Logout</span>
                             </a>
