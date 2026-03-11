@@ -127,13 +127,6 @@ login($conn);
                                 <p class="fs-12 fw-medium text-muted">Thank you for get back <strong>PSU</strong> web applications, let's access our the best recommendation for you.</p>
                                 <form method="post" class="w-100 mt-4 pt-2">
                                     <?php if (!empty(
-                                        
-                                        
-                                        
-                                        
-                                        
-                                        
-                                        
                                         $_SESSION['login_error'] ?? ''
                                     )) : ?>
                                         <div class="alert alert-danger"><?php echo htmlspecialchars($_SESSION['login_error']); unset($_SESSION['login_error']); ?></div>
