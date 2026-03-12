@@ -50,7 +50,7 @@ function login($conn)
                 $_SESSION['logged_in'] = true;
                 unset($_SESSION['login_error']);
                 // Redirect by user type to appropriate area
-                if ($usertype === 'teacher') {
+                if ($usertype === 'teacher' || $usertype ==='Teacher') {
                     header('Location: pages/admin/index.php');
                     exit;
                 } else {
