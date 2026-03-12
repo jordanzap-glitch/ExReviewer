@@ -146,17 +146,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_session'])) {
             
             <!-- [ page-header ] end -->
             <?php
-            // Show message stored in session (after PRG) or local variable
-            if (empty($session_msg) && !empty($_SESSION['session_msg'])) {
-                $session_msg = $_SESSION['session_msg'];
-                unset($_SESSION['session_msg']);
-            }
+            include __DIR__ . '/includes/message.php';
+            show_flash_messages();
             ?>
-            <?php if (!empty($session_msg)) : ?>
-                <div class="alert alert-<?php echo $session_msg['type']; ?> auto-dismiss">
-                    <?php echo htmlspecialchars($session_msg['text']); ?>
-                </div>
-            <?php endif; ?>
             <!-- [ Main Content ] start -->
             <div class="main-content">
                 <div class="row">

@@ -1,4 +1,40 @@
 <?php include "includes/init.php"; ?>
+<?php
+// DB and functions for users
+require_once __DIR__ . '/../../db/dbcon.php';
+require_once __DIR__ . '/functions/users.php';
+
+$user_msg = null;
+// fetch dropdown data
+$sections = get_sections($conn);
+$academic_years = get_active_academicyears($conn);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
+    if (empty($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+        $_SESSION['user_msg'] = ['type' => 'danger', 'text' => 'Invalid CSRF token. Please try again.'];
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+    $data = [
+        'last_name' => $_POST['lastname'] ?? '',
+        'first_name' => $_POST['firstname'] ?? '',
+        'middle_name' => $_POST['middlename'] ?? '',
+        'email' => $_POST['email'] ?? '',
+        'password' => $_POST['password'] ?? '',
+        'year_level' => $_POST['year_level'] ?? '',
+        'section_id' => $_POST['section_id'] ?? 0,
+        'academicyears_id' => $_POST['academicyears_id'] ?? 0,
+    ];
+    $res = add_user($conn, $data);
+    if ($res['success']) {
+        $_SESSION['user_msg'] = ['type' => 'success', 'text' => 'User added successfully.'];
+    } else {
+        $_SESSION['user_msg'] = ['type' => 'danger', 'text' => $res['error'] ?? 'Failed to add user.'];
+    }
+    header('Location: ' . $_SERVER['REQUEST_URI']);
+    exit;
+} ?>
+
 <!DOCTYPE html>
 <html lang="zxx">
 
@@ -113,6 +149,10 @@
             </div>
             
             <!-- [ page-header ] end -->
+            <?php
+            include __DIR__ . '/includes/message.php';
+            show_flash_messages();
+            ?>
             <!-- [ Main Content ] start -->
             <div class="main-content">
                 <div class="row">
@@ -133,45 +173,30 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr>
-                                                <td>Juan Dela Cruz</td>
-                                                <td>juan.delacruz@example.com</td>
-                                                <td>Admin</td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Maria Santos</td>
-                                                <td>maria.santos@example.com</td>
-                                                <td>Editor</td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>Pedro Reyes</td>
-                                                <td>pedro.reyes@example.com</td>
-                                                <td>Student</td>
-                                                <td>
-                                                    <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
-                                                        <i class="feather-edit"></i>
-                                                    </a>
-                                                    <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
-                                                        <i class="feather-trash-2"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
+                                            <?php
+                                            $users = get_users($conn);
+                                            if (!empty($users)) {
+                                                foreach ($users as $u) {
+                                                    ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars($u['full_name']); ?></td>
+                                                        <td><?php echo htmlspecialchars($u['email']); ?></td>
+                                                        <td><?php echo htmlspecialchars($u['role'] ?? ''); ?></td>
+                                                        <td>
+                                                            <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                                <i class="feather-edit"></i>
+                                                            </a>
+                                                            <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                                <i class="feather-trash-2"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                    <?php
+                                                }
+                                            } else {
+                                                echo '<tr><td colspan="4">No users found.</td></tr>';
+                                            }
+                                            ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -238,38 +263,72 @@
     <!-- Create User Modal -->
     <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
+            <form method="post" class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createUserLabel">Create User</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="userName" class="form-label">Name</label>
-                        <input type="text" id="userName" class="form-control" placeholder="Enter full name">
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-3">
+                            <label for="lastname" class="form-label">Last name</label>
+                            <input type="text" id="lastname" name="lastname" class="form-control" placeholder="Last name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="firstname" class="form-label">First name</label>
+                            <input type="text" id="firstname" name="firstname" class="form-control" placeholder="First name" required>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label for="userEmail" class="form-label">Email</label>
-                        <input type="email" id="userEmail" class="form-control" placeholder="Enter email address">
+                        <label for="middlename" class="form-label">Middle name</label>
+                        <input type="text" id="middlename" name="middlename" class="form-control" placeholder="Middle name">
                     </div>
                     <div class="mb-3">
-                        <label for="userPassword" class="form-label">Password</label>
-                        <input type="password" id="userPassword" class="form-control" placeholder="Enter password">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" id="email" name="email" class="form-control" placeholder="Enter email address" required>
                     </div>
                     <div class="mb-3">
-                        <label for="userRole" class="form-label">Role</label>
-                        <select id="userRole" class="form-select">
-                            <option value="Admin">Admin</option>
-                            <option value="Editor">Editor</option>
-                            <option value="Student">Student</option>
-                        </select>
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-4 mb-3">
+                            <label for="year_level" class="form-label">Year level</label>
+                            <select id="year_level" name="year_level" class="form-select" required>
+                                <option value="">Select Year</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="Graduate">Graduate</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="section_id" class="form-label">Section</label>
+                            <select id="section_id" name="section_id" class="form-select" required>
+                                <option value="">Select Section</option>
+                                <?php foreach ($sections as $s): ?>
+                                    <option value="<?php echo (int)$s['id']; ?>"><?php echo htmlspecialchars($s['name']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="academicyears_id" class="form-label">Academic year</label>
+                            <select id="academicyears_id" name="academicyears_id" class="form-select" required>
+                                <option value="">Select AY</option>
+                                <?php foreach ($academic_years as $ay): ?>
+                                    <option value="<?php echo (int)$ay['id']; ?>"><?php echo htmlspecialchars($ay['sy_start'] . ' - ' . $ay['sy_end']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button id="saveUserBtn" type="button" class="btn btn-primary" data-bs-dismiss="modal">Add User</button>
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                    <button type="submit" name="add_user" class="btn btn-primary">Add User</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 

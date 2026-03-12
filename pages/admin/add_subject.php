@@ -142,17 +142,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_subject'])) {
             
             <!-- [ page-header ] end -->
             <?php
-            // Show message stored in session (after PRG) or local variable
-            if (empty($subject_msg) && !empty($_SESSION['subject_msg'])) {
-                $subject_msg = $_SESSION['subject_msg'];
-                unset($_SESSION['subject_msg']);
-            }
+            include __DIR__ . '/includes/message.php';
+            show_flash_messages();
             ?>
-            <?php if (!empty($subject_msg)) : ?>
-                <div class="alert alert-<?php echo $subject_msg['type']; ?> auto-dismiss">
-                    <?php echo htmlspecialchars($subject_msg['text']); ?>
-                </div>
-            <?php endif; ?>
             <!-- [ Main Content ] start -->
             <div class="main-content">
                 <div class="row">
@@ -266,22 +258,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_subject'])) {
                     <h5 class="modal-title" id="createSubjectLabel">Create Subject</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="subject_name" class="form-label">Subject Name</label>
+                        <input type="text" id="subject_name" name="subject_name" class="form-control" placeholder="Subject name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="subject_code" class="form-label">Subject Code</label>
+                        <input type="text" id="subject_code" name="subject_code" class="form-control" placeholder="Subject code" required>
+                    </div>
+                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                     <button type="submit" name="add_subject" class="btn btn-primary">Add Subject</button>
-                </div>
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                                    $_SESSION['csrf_token']
-                                ); ?>">
-                                <button type="submit" name="add_subject" class="btn btn-primary">Add Subject</button>
                 </div>
             </form>
         </div>
