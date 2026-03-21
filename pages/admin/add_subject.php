@@ -148,10 +148,7 @@ if (!empty($_SESSION['subject_msg'])) {
             </div>
             
             <!-- [ page-header ] end -->
-            <?php
-            include __DIR__ . '/includes/message.php';
-            show_flash_messages();
-            ?>
+            
             <!-- [ Main Content ] start -->
             <div class="main-content">
                 <div class="row">

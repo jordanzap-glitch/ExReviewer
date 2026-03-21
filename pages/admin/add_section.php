@@ -1,69 +1,37 @@
 <?php include "includes/init.php"; ?>
+
+
 <?php
-// DB and functions for users
+// DB and functions
 require_once __DIR__ . '/../../db/dbcon.php';
-require_once __DIR__ . '/functions/users.php';
+require_once __DIR__ . '/functions/sections.php';
 
-$user_msg = null;
-// fetch dropdown data
-$sections = get_sections($conn);
-$academic_years = get_active_academicyears($conn);
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
+$section_msg = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_section'])) {
+    // CSRF protection
     if (empty($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
-        $_SESSION['user_msg'] = ['type' => 'danger', 'text' => 'Invalid CSRF token. Please try again.'];
+        $_SESSION['section_msg'] = ['type' => 'danger', 'text' => 'Invalid CSRF token. Please try again.'];
         header('Location: ' . $_SERVER['REQUEST_URI']);
         exit;
     }
-    // The section dropdown posts the section NAME; resolve it to an id here
-    $posted_section = trim($_POST['section_id'] ?? '');
-    $resolved_section_id = 0;
-    if ($posted_section !== '') {
-        $chk = mysqli_prepare($conn, "SELECT id FROM tbl_sections WHERE name = ? LIMIT 1");
-        if ($chk) {
-            mysqli_stmt_bind_param($chk, 's', $posted_section);
-            mysqli_stmt_execute($chk);
-            $res_chk = mysqli_stmt_get_result($chk);
-            if ($row_chk = mysqli_fetch_assoc($res_chk)) {
-                $resolved_section_id = (int)$row_chk['id'];
-            }
-            mysqli_stmt_close($chk);
-        }
-        if ($resolved_section_id === 0) {
-            $_SESSION['user_msg'] = ['type' => 'danger', 'text' => 'Selected section not found.'];
-            header('Location: ' . $_SERVER['REQUEST_URI']);
-            exit;
-        }
-    }
-
-    $data = [
-        'last_name' => $_POST['lastname'] ?? '',
-        'first_name' => $_POST['firstname'] ?? '',
-        'middle_name' => $_POST['middlename'] ?? '',
-        'email' => $_POST['email'] ?? '',
-        'password' => $_POST['password'] ?? '',
-        'year_level' => $_POST['year_level'] ?? '',
-        'section_id' => $resolved_section_id,
-        'academicyears_id' => $_POST['academicyears_id'] ?? 0,
-    ];
-    $res = add_user($conn, $data);
+    $name = $_POST['section_name'] ?? '';
+    $res = add_section($conn, $name);
     if ($res['success']) {
-        $_SESSION['user_msg'] = ['type' => 'success', 'text' => 'User added successfully.'];
+        $_SESSION['section_msg'] = ['type' => 'success', 'text' => 'Section added successfully.'];
     } else {
-        $_SESSION['user_msg'] = ['type' => 'danger', 'text' => $res['error'] ?? 'Failed to add user.'];
+        $_SESSION['section_msg'] = ['type' => 'danger', 'text' => $res['error'] ?? 'Failed to add section.'];
     }
     header('Location: ' . $_SERVER['REQUEST_URI']);
     exit;
 }
 
 // If a message from a previous POST exists, pull it for display (PRG)
-$user_msg = null;
-if (!empty($_SESSION['user_msg'])) {
-    $user_msg = $_SESSION['user_msg'];
-    unset($_SESSION['user_msg']);
+$section_msg = null;
+if (!empty($_SESSION['section_msg'])) {
+    $section_msg = $_SESSION['section_msg'];
+    unset($_SESSION['section_msg']);
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="zxx">
 
@@ -76,7 +44,7 @@ if (!empty($_SESSION['user_msg'])) {
     <meta name="author" content="theme_ocean">
     <!--! The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags !-->
     <!--! BEGIN: Apps Title-->
-    <title>EEReviewer || Users</title>
+    <title>EEReviewer || Subjects</title>
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
     <?php include "includes/css_scripts_head.php"; ?>
@@ -115,11 +83,11 @@ if (!empty($_SESSION['user_msg'])) {
             <div class="page-header">
                 <div class="page-header-left d-flex align-items-center">
                     <div class="page-header-title">
-                        <h5 class="m-b-10">Users</h5>
+                        <h5 class="m-b-10">Subjects</h5>
                     </div>
                     <ul class="breadcrumb">
                         <li class="breadcrumb-item"><a href="index.html">Home</a></li>
-                        <li class="breadcrumb-item">Users</li>
+                        <li class="breadcrumb-item">Subjects</li>
                     </ul>
                 </div>
                 <div class="page-header-right ms-auto">
@@ -163,9 +131,9 @@ if (!empty($_SESSION['user_msg'])) {
                                     </a>
                                 </div>
                             </div>
-                            <a href="javascript:void(0);" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                            <a href="javascript:void(0);" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSectionModal">
                                 <i class="feather-plus me-2"></i>
-                                <span>Create User</span>
+                                <span>Create Section</span>
                             </a>
                         </div>
                     </div>
@@ -185,29 +153,25 @@ if (!empty($_SESSION['user_msg'])) {
                     <div class="col-lg-12">
                         <div class="card stretch stretch-full">
                             <div class="card-header bg-soft-info border-soft-info text-info d-flex align-items-center justify-content-between">
-                                    <h5 class="card-title mb-0">Users</h5>
+                                    <h5 class="card-title mb-0">Subjects</h5>
                                 </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
                                     <table id="myTable" class="table table-hover mb-0">
                                         <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Email</th>
-                                                <th>Role</th>
-                                                <th>Action</th>
-                                            </tr>
+                                                    <tr>
+                                                        <th>Section</th>
+                                                        <th>Action</th>
+                                                    </tr>
                                         </thead>
                                         <tbody>
                                             <?php
-                                            $users = get_users($conn);
-                                            if (!empty($users)) {
-                                                foreach ($users as $u) {
+                                            $sections = get_sections_list($conn);
+                                            if (!empty($sections)) {
+                                                foreach ($sections as $sec) {
                                                     ?>
                                                     <tr>
-                                                        <td><?php echo htmlspecialchars($u['full_name']); ?></td>
-                                                        <td><?php echo htmlspecialchars($u['email']); ?></td>
-                                                        <td><?php echo htmlspecialchars($u['role'] ?? ''); ?></td>
+                                                        <td><?php echo htmlspecialchars($sec['name']); ?></td>
                                                         <td>
                                                             <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
                                                                 <i class="feather-edit"></i>
@@ -220,7 +184,7 @@ if (!empty($_SESSION['user_msg'])) {
                                                     <?php
                                                 }
                                             } else {
-                                                echo '<tr><td colspan="4">No users found.</td></tr>';
+                                                echo '<tr><td colspan="2">No sections found.</td></tr>';
                                             }
                                             ?>
                                         </tbody>
@@ -314,105 +278,36 @@ if (!empty($_SESSION['user_msg'])) {
         var bsToast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: delay });
         bsToast.show();
     }
-    <?php if (!empty($user_msg)): ?>
-    var _user_msg = <?php echo json_encode($user_msg); ?>;
+    <?php if (!empty($section_msg)): ?>
+    var _section_msg = <?php echo json_encode($section_msg); ?>;
     document.addEventListener('DOMContentLoaded', function () {
-        showToast(_user_msg.type, _user_msg.text);
+        showToast(_section_msg.type, _section_msg.text);
     });
     <?php endif; ?>
     </script>
     <!--! ================================================================ !-->
-    <!-- Create User Modal -->
-    <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserLabel" aria-hidden="true">
+    <!-- Create Section Modal (form POST) -->
+    <div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <form method="post" class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="createUserLabel">Create User</h5>
+                    <h5 class="modal-title" id="createSectionLabel">Create Section</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-2">
-                        <div class="col-md-6 mb-3">
-                            <label for="lastname" class="form-label">Last name</label>
-                            <input type="text" id="lastname" name="lastname" class="form-control" placeholder="Last name" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="firstname" class="form-label">First name</label>
-                            <input type="text" id="firstname" name="firstname" class="form-control" placeholder="First name" required>
-                        </div>
-                    </div>
                     <div class="mb-3">
-                        <label for="middlename" class="form-label">Middle name</label>
-                        <input type="text" id="middlename" name="middlename" class="form-control" placeholder="Middle name">
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" id="email" name="email" class="form-control" placeholder="Enter email address" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-md-4 mb-3">
-                            <label for="year_level" class="form-label">Year level</label>
-                            <select id="year_level" name="year_level" class="form-select" required>
-                                <option value="">Select Year</option>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="Graduate">Graduate</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="section_id" class="form-label">Section</label>
-                            <select id="section_id" name="section_id" class="form-select" required>
-                                <option value="">Select Section</option>
-                                <?php foreach ($sections as $s): ?>
-                                    <option value="<?php echo htmlspecialchars($s['name']); ?>"><?php echo htmlspecialchars($s['name']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="academicyears_id" class="form-label">Academic year</label>
-                            <select id="academicyears_id" name="academicyears_id" class="form-select" required>
-                                <option value="">Select AY</option>
-                                <?php foreach ($academic_years as $ay): ?>
-                                    <option value="<?php echo (int)$ay['id']; ?>"><?php echo htmlspecialchars($ay['sy_start'] . ' - ' . $ay['sy_end']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                        <label for="section_name" class="form-label">Section Name</label>
+                        <input type="text" id="section_name" name="section_name" class="form-control" placeholder="Section name" required>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
-                    <button type="submit" name="add_user" class="btn btn-primary">Add User</button>
+                    <button type="submit" name="add_section" class="btn btn-primary">Add Section</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var btn = document.getElementById('saveUserBtn');
-        if (btn) {
-            btn.addEventListener('click', function () {
-                var name = document.getElementById('userName').value.trim();
-                var email = document.getElementById('userEmail').value.trim();
-                var pass = document.getElementById('userPassword').value;
-                var role = document.getElementById('userRole').value;
-                if (!name || !email || !pass) {
-                    alert('Please complete all required fields');
-                    return;
-                }
-                // Temporary behaviour: log the new user. Replace with AJAX if needed.
-                console.log('New user:', { name: name, email: email, role: role });
-            });
-        }
-    });
-    </script>
     <!--! ================================================================ !-->
     <!--! Footer Script !-->
     <!--! ================================================================ !-->
@@ -428,6 +323,15 @@ if (!empty($_SESSION['user_msg'])) {
             paging: true,
             searching: true
         });
+    });
+    </script>
+    <script>
+    // Auto-dismiss alerts with class .auto-dismiss after 3 seconds
+    document.addEventListener('DOMContentLoaded', function () {
+        var el = document.querySelector('.auto-dismiss');
+        if (el) {
+            setTimeout(function () { el.remove(); }, 3000);
+        }
     });
     </script>
     <!--! END: Theme Customizer !-->

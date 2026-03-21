@@ -73,7 +73,7 @@ function add_user($conn, array $data) {
     }
 
     // prepare insert including usertypes_id
-    $ins = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, year_level, section_id, academicyears_id, usertypes_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $ins = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, year_level, sections_id, academicyears_id, usertypes_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     if (!$ins) return ['success' => false, 'error' => 'Failed to prepare insert statement'];
     mysqli_stmt_bind_param($ins, 'ssssssiii', $last, $first, $middle, $email, $hashed, $year_level, $section_id, $academicyears_id, $usertype_id);
     if (mysqli_stmt_execute($ins)) {
