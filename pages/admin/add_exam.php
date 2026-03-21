@@ -1,4 +1,66 @@
 <?php include "includes/init.php"; ?>
+<?php
+// Load DB connection and fetch active subjects and academic years
+require_once __DIR__ . '/../../db/dbcon.php';
+require_once __DIR__ . '/functions/questions.php';
+
+$subjects = [];
+$sql = "SELECT `name` FROM tbl_subjects ORDER BY `name` ASC";
+$stmt = mysqli_prepare($conn, $sql);
+if ($stmt) {
+    mysqli_stmt_execute($stmt);
+    $res = mysqli_stmt_get_result($stmt);
+    while ($r = mysqli_fetch_assoc($res)) {
+        $subjects[] = $r;
+    }
+}
+
+$years = [];
+$sql2 = "SELECT id, YEAR(sy_start) AS sy_start, YEAR(sy_end) AS sy_end FROM tbl_academicyears WHERE is_active = 1 ORDER BY sy_start DESC";
+$stmt2 = mysqli_prepare($conn, $sql2);
+if ($stmt2) {
+    mysqli_stmt_execute($stmt2);
+    $res2 = mysqli_stmt_get_result($stmt2);
+    while ($r2 = mysqli_fetch_assoc($res2)) {
+        $years[] = $r2;
+    }
+}
+
+    // If a message from a previous POST exists, pull it for display (PRG)
+    $exam_msg = null;
+    if (!empty($_SESSION['exam_msg'])) {
+        $exam_msg = $_SESSION['exam_msg'];
+        unset($_SESSION['exam_msg']);
+    }
+
+    // Handle form POST (non-AJAX preferred)
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_question') {
+        // CSRF
+        $token = $_POST['csrf_token'] ?? '';
+        if (!verify_csrf_token($token)) {
+            $_SESSION['exam_msg'] = ['type' => 'danger', 'text' => 'Invalid CSRF token.'];
+            header('Location: ' . $_SERVER['REQUEST_URI']);
+            exit;
+        }
+
+        $question = $_POST['question'] ?? '';
+        $a = $_POST['opt_a'] ?? '';
+        $b = $_POST['opt_b'] ?? '';
+        $c = $_POST['opt_c'] ?? '';
+        $d = $_POST['opt_d'] ?? '';
+        $correct = $_POST['correct'] ?? '';
+        $subject = $_POST['subject'] ?? '';
+
+        $res = add_question($conn, $question, $a, $b, $c, $d, $correct, $subject);
+        if ($res['success']) {
+            $_SESSION['exam_msg'] = ['type' => 'success', 'text' => 'Question saved successfully.'];
+        } else {
+            $_SESSION['exam_msg'] = ['type' => 'danger', 'text' => $res['error'] ?? 'Failed to save question.'];
+        }
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
+?>
 <!DOCTYPE html>
 <html lang="zxx">
 
@@ -13,7 +75,7 @@
     <!--! BEGIN: Apps Title-->
     <title>EEReviewer || Add Exam</title>
     <!--! END:  Apps Title-->
-    <!--! BEGIN: Favicon-->
+    <!--! BEGIN: Favicon-->-p45edf 78 
     <?php include "includes/css_scripts_head.php"; ?>
     <!-- DataTables CSS (CDN) -->
     <!--! END: Custom CSS-->
@@ -123,35 +185,37 @@
                                 </div>
                             <div class="card-body p-0">
                                 <div class="p-3">
-                                    <form id="examForm">
+                                    <form id="examForm" method="post">
+                                        <input type="hidden" name="action" value="add_question">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
                                         <div class="mb-3">
                                             <label for="examQuestion" class="form-label">Question</label>
-                                            <textarea id="examQuestion" class="form-control" rows="3" placeholder="Enter the question"></textarea>
+                                            <textarea id="examQuestion" name="question" class="form-control" rows="3" placeholder="Enter the question"></textarea>
                                         </div>
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
                                                 <label for="answerA" class="form-label">Answer A</label>
-                                                <input id="answerA" type="text" class="form-control" placeholder="Option A">
+                                                <input id="answerA" name="opt_a" type="text" class="form-control" placeholder="Option A">
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label for="answerB" class="form-label">Answer B</label>
-                                                <input id="answerB" type="text" class="form-control" placeholder="Option B">
+                                                <input id="answerB" name="opt_b" type="text" class="form-control" placeholder="Option B">
                                             </div>
                                         </div>
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
                                                 <label for="answerC" class="form-label">Answer C</label>
-                                                <input id="answerC" type="text" class="form-control" placeholder="Option C">
+                                                <input id="answerC" name="opt_c" type="text" class="form-control" placeholder="Option C">
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label for="answerD" class="form-label">Answer D</label>
-                                                <input id="answerD" type="text" class="form-control" placeholder="Option D">
+                                                <input id="answerD" name="opt_d" type="text" class="form-control" placeholder="Option D">
                                             </div>
                                         </div>
                                         <div class="row">
                                             <div class="col-md-4 mb-3">
                                                 <label for="correctAnswer" class="form-label">Correct Answer</label>
-                                                <select id="correctAnswer" class="form-select">
+                                                <select id="correctAnswer" name="correct" class="form-select">
                                                     <option value="">-- Select Correct --</option>
                                                     <option value="A">A</option>
                                                     <option value="B">B</option>
@@ -161,19 +225,28 @@
                                             </div>
                                             <div class="col-md-4 mb-3">
                                                 <label for="examSubject" class="form-label">Subject</label>
-                                                <select id="examSubject" class="form-select">
+                                                <select id="examSubject" name="subject" class="form-select">
                                                     <option value="">-- Select Subject --</option>
-                                                    <option>Calculus I</option>
-                                                    <option>Physics I</option>
-                                                    <option>Intro to Programming</option>
+                                                    <?php if (!empty($subjects)): ?>
+                                                        <?php foreach ($subjects as $s): ?>
+                                                            <option value="<?php echo htmlspecialchars($s['name']); ?>"><?php echo htmlspecialchars($s['name']); ?></option>
+                                                        <?php endforeach; ?>
+                                                    <?php else: ?>
+                                                        <option value="">No active subjects</option>
+                                                    <?php endif; ?>
                                                 </select>
                                             </div>
                                             <div class="col-md-4 mb-3">
                                                 <label for="examYear" class="form-label">Year</label>
-                                                <select id="examYear" class="form-select">
-                                                    <option value="2024">2024</option>
-                                                    <option value="2025">2025</option>
-                                                    <option value="2026">2026</option>
+                                                <select id="examYear" name="year" class="form-select">
+                                                    <option value="">-- Select Year --</option>
+                                                    <?php if (!empty($years)): ?>
+                                                        <?php foreach ($years as $y): ?>
+                                                            <option value="<?php echo htmlspecialchars($y['id']); ?>"><?php echo htmlspecialchars($y['sy_start'] . ' - ' . $y['sy_end']); ?></option>
+                                                        <?php endforeach; ?>
+                                                    <?php else: ?>
+                                                        <option value="">No active academic years</option>
+                                                    <?php endif; ?>
                                                 </select>
                                             </div>
                                         </div>
@@ -304,6 +377,13 @@
         var bsToast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: delay });
         bsToast.show();
     }
+    <?php if (!empty($exam_msg)): ?>
+    var _exam_msg = <?php echo json_encode($exam_msg); ?>;
+    document.addEventListener('DOMContentLoaded', function () {
+        // show server-side message after redirect
+        showToast(_exam_msg.type, _exam_msg.text);
+    });
+    <?php endif; ?>
 
     document.addEventListener('DOMContentLoaded', function () {
         var btn = document.getElementById('saveExamBtn');
@@ -321,12 +401,10 @@
                 if (!a || !b || !c || !d) { showToast('error','Please provide all answer options'); return; }
                 if (!correct) { showToast('error','Please select the correct answer'); return; }
                 if (!subject) { showToast('error','Please select a subject'); return; }
-                // Temporary behaviour: show success toast and log the exam. Replace with AJAX/PHP persistence as needed.
-                var payload = { question: question, answers: { A: a, B: b, C: c, D: d }, correct: correct, subject: subject, year: year };
-                console.log('New exam:', payload);
-                showToast('success','Exam saved');
-                // Optionally: clear form
-                // document.getElementById('examForm').reset();
+
+                // Submit the form normally (no AJAX)
+                var form = document.getElementById('examForm');
+                if (form) form.submit();
             });
         }
     });

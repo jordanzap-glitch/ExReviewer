@@ -30,6 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_session'])) {
     header('Location: ' . $_SERVER['REQUEST_URI']);
     exit;
 }
+
+// If a message from a previous POST exists, pull it for display (PRG)
+$session_msg = null;
+if (!empty($_SESSION['session_msg'])) {
+    $session_msg = $_SESSION['session_msg'];
+    unset($_SESSION['session_msg']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="zxx">
@@ -257,6 +264,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_session'])) {
 
     <!--! ================================================================ !-->
     <!--! [End] Theme Customizer !-->
+    
+    <!-- Toast container (used for success / error messages) -->
+    <div id="nxlToastContainer" class="position-fixed" style="right:12px; bottom:12px; z-index:999999">
+        <div id="nxlToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="nxlToastBody">Action completed</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function showToast(type, message, delay) {
+        delay = delay || 3000;
+        var toastEl = document.getElementById('nxlToast');
+        var body = document.getElementById('nxlToastBody');
+        if (!toastEl || !body) {
+            alert(message);
+            return;
+        }
+        // reset classes
+        toastEl.classList.remove('bg-success','bg-danger','bg-primary','bg-secondary');
+        if (type === 'success') toastEl.classList.add('bg-success');
+        else if (type === 'error' || type === 'danger') toastEl.classList.add('bg-danger');
+        else toastEl.classList.add('bg-primary');
+        body.textContent = message;
+        var bsToast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: delay });
+        bsToast.show();
+    }
+    <?php if (!empty($session_msg)): ?>
+    var _session_msg = <?php echo json_encode($session_msg); ?>;
+    document.addEventListener('DOMContentLoaded', function () {
+        showToast(_session_msg.type, _session_msg.text);
+    });
+    <?php endif; ?>
+    </script>
     <!--! ================================================================ !-->
     <!-- Create Session Modal (form POST) -->
     <div class="modal fade" id="createSessionModal" tabindex="-1" aria-labelledby="createSessionLabel" aria-hidden="true">
