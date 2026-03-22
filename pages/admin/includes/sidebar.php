@@ -38,7 +38,7 @@
                         </a>
                         <ul class="nxl-submenu">
                             <li class="nxl-item"><a class="nxl-link" href="add_subject.php">Add Subject</a></li>
-                            <li class="nxl-item"><a class="nxl-link" href="add_lesson.php">Add Lesson</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="add_modules.php">Add Modules</a></li>
                             <li class="nxl-item"><a class="nxl-link" href="add_exam.php">Add Exam Questions</a></li>
                         </ul>
                     </li>
