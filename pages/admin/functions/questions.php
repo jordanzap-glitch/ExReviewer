@@ -118,8 +118,46 @@ function get_question($conn, $id)
     return ['success' => true, 'data' => $data];
 }
 
+
 /**
- * Update a question in tbl_question_bank
+ * Return question data as a structured array (wrapper around get_question())
+ *
+ * @param mysqli $conn
+ * @param int $id
+ * @return array JSON-serializable response with keys: success, data, error
+ */
+function view_question_json($conn, $id)
+{
+    $id = (int)$id;
+    return get_question($conn, $id);
+}
+
+// Lightweight JSON endpoint: call this file directly with ?action=view&id=NN
+if (php_sapi_name() !== 'cli' && isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['id'])) {
+    // Ensure DB connection exists; try to include if missing (works when file is requested directly)
+    if (!isset($conn) || !$conn) {
+        @include_once __DIR__ . '/../../../db/dbcon.php';
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    $id = (int)$_GET['id'];
+    if (empty($id)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid or missing id']);
+        exit;
+    }
+
+    if (!isset($conn) || !$conn) {
+        echo json_encode(['success' => false, 'error' => 'Database connection not available']);
+        exit;
+    }
+
+    $res = view_question_json($conn, $id);
+    echo json_encode($res);
+    exit;
+}
+
+/**
+ * Update an existing question by id
  *
  * @param mysqli $conn
  * @param int $id
@@ -132,14 +170,12 @@ function get_question($conn, $id)
  * @param string $subject_name
  * @param int|null $academicyear_id
  * @param string $remarks
- * @return array ['success'=>bool, 'error'=>string|null]
+ * @return array
  */
 function update_question($conn, $id, $question, $opt_a, $opt_b, $opt_c, $opt_d, $correct_ans, $subject_name, $academicyear_id = null, $remarks = '')
 {
     $id = (int)$id;
-    if ($id <= 0) {
-        return ['success' => false, 'error' => 'Invalid question id.'];
-    }
+    if ($id <= 0) return ['success' => false, 'error' => 'Invalid id'];
 
     $question = trim($question ?? '');
     $opt_a = trim($opt_a ?? '');
@@ -161,7 +197,7 @@ function update_question($conn, $id, $question, $opt_a, $opt_b, $opt_c, $opt_d, 
         return ['success' => false, 'error' => 'Subject name is required.'];
     }
 
-    // Resolve subject name to id
+    // Resolve subject id
     $subject_id = null;
     $sql = "SELECT id FROM tbl_subjects WHERE `name` = ? LIMIT 1";
     $stmt = mysqli_prepare($conn, $sql);
@@ -173,32 +209,114 @@ function update_question($conn, $id, $question, $opt_a, $opt_b, $opt_c, $opt_d, 
             $subject_id = (int)$row['id'];
         }
     }
-
     if (empty($subject_id)) {
         return ['success' => false, 'error' => 'Subject not found: ' . $subject_name];
     }
 
-    // Build update SQL, handle nullable academicyear
-    if ($academicyear_id === null) {
-        $sql = "UPDATE tbl_question_bank SET question = ?, opt_a = ?, opt_b = ?, opt_c = ?, opt_d = ?, correct_ans = ?, subjects_id = ?, academicyears_id = NULL, remarks = ? WHERE id = ? LIMIT 1";
-        $stmt = mysqli_prepare($conn, $sql);
-        if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
-        // types: question(s), opt_a(s), opt_b(s), opt_c(s), opt_d(s), correct_ans(s), subject_id(i), remarks(s), id(i)
-        mysqli_stmt_bind_param($stmt, 'ssssssisi', $question, $opt_a, $opt_b, $opt_c, $opt_d, $correct_ans, $subject_id, $remarks, $id);
-    } else {
-        $sql = "UPDATE tbl_question_bank SET question = ?, opt_a = ?, opt_b = ?, opt_c = ?, opt_d = ?, correct_ans = ?, subjects_id = ?, academicyears_id = ?, remarks = ? WHERE id = ? LIMIT 1";
-        $stmt = mysqli_prepare($conn, $sql);
-        if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
-        // types: question(s), opt_a(s), opt_b(s), opt_c(s), opt_d(s), correct_ans(s), subject_id(i), academicyear_id(i), remarks(s), id(i)
-        mysqli_stmt_bind_param($stmt, 'ssssssiisi', $question, $opt_a, $opt_b, $opt_c, $opt_d, $correct_ans, $subject_id, $academicyear_id, $remarks, $id);
+    $sql = "UPDATE tbl_question_bank SET question = ?, opt_a = ?, opt_b = ?, opt_c = ?, opt_d = ?, correct_ans = ?, subjects_id = ?, academicyears_id = ?, remarks = ? WHERE id = ?";
+    $stmt = mysqli_prepare($conn, $sql);
+    if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
+
+    // bind: 6 strings, subject id int, academicyear int, remarks string, id int
+    mysqli_stmt_bind_param($stmt, 'ssssssiisi', $question, $opt_a, $opt_b, $opt_c, $opt_d, $correct_ans, $subject_id, $academicyear_id, $remarks, $id);
+    if (mysqli_stmt_execute($stmt)) {
+        return ['success' => true];
     }
 
-    if (!mysqli_stmt_execute($stmt)) {
-        return ['success' => false, 'error' => 'Database error (execute failed).'];
-    }
-
-    return ['success' => true];
+    return ['success' => false, 'error' => 'Database error (update failed).'];
 }
 
-?>
+// JSON POST endpoint to update question: POST action=update
+if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
+    if (!isset($conn) || !$conn) {
+        @include_once __DIR__ . '/../../../db/dbcon.php';
+    }
+    // Try to include init for CSRF helper if available
+    if (!function_exists('verify_csrf_token')) {
+        @include_once __DIR__ . '/../includes/init.php';
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    $token = $_POST['csrf_token'] ?? '';
+    if (function_exists('verify_csrf_token') && !verify_csrf_token($token)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+        exit;
+    }
+
+    $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+    $question = $_POST['question'] ?? '';
+    $a = $_POST['opt_a'] ?? '';
+    $b = $_POST['opt_b'] ?? '';
+    $c = $_POST['opt_c'] ?? '';
+    $d = $_POST['opt_d'] ?? '';
+    $correct = $_POST['correct'] ?? '';
+    $subject = $_POST['subject'] ?? '';
+    $year = $_POST['year'] ?? null;
+    $remarks = $_POST['remarks'] ?? '';
+
+    if (!isset($conn) || !$conn) {
+        echo json_encode(['success' => false, 'error' => 'Database connection not available']);
+        exit;
+    }
+
+    $res = update_question($conn, $id, $question, $a, $b, $c, $d, $correct, $subject, $year, $remarks);
+    echo json_encode($res);
+    exit;
+}
+
+
+/**
+ * Delete a question by id
+ *
+ * @param mysqli $conn
+ * @param int $id
+ * @return array
+ */
+function delete_question($conn, $id)
+{
+    $id = (int)$id;
+    if ($id <= 0) return ['success' => false, 'error' => 'Invalid id'];
+
+    $sql = "DELETE FROM tbl_question_bank WHERE id = ? LIMIT 1";
+    $stmt = mysqli_prepare($conn, $sql);
+    if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
+    mysqli_stmt_bind_param($stmt, 'i', $id);
+    if (mysqli_stmt_execute($stmt)) {
+        if (mysqli_stmt_affected_rows($stmt) > 0) return ['success' => true];
+        return ['success' => false, 'error' => 'Question not found or already deleted'];
+    }
+    return ['success' => false, 'error' => 'Database error (delete failed).'];
+}
+
+// JSON POST endpoint to delete question: POST action=delete
+if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+    if (!isset($conn) || !$conn) {
+        @include_once __DIR__ . '/../../../db/dbcon.php';
+    }
+    header('Content-Type: application/json; charset=utf-8');
+
+    // CSRF check if available
+    $token = $_POST['csrf_token'] ?? '';
+    if (function_exists('verify_csrf_token') && !verify_csrf_token($token)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
+        exit;
+    }
+
+    $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'error' => 'Invalid id']);
+        exit;
+    }
+    if (!isset($conn) || !$conn) {
+        echo json_encode(['success' => false, 'error' => 'Database connection not available']);
+        exit;
+    }
+
+    $res = delete_question($conn, $id);
+    echo json_encode($res);
+    exit;
+}
+
+
 ?>

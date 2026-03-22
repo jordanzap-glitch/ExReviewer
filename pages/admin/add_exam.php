@@ -314,17 +314,15 @@ if ($stmt3) {
                                                             <td><?php echo htmlspecialchars($q['subject_name'] ?? ''); ?></td>
                                                             <td><?php echo !empty($q['sy_start']) ? htmlspecialchars($q['sy_start'] . ' - ' . $q['sy_end']) : ''; ?></td>
                                                             <td>
-                                                                <div class="d-flex gap-1">
-                                                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-primary view-question-btn" title="View" aria-disabled="true" data-id="<?php echo (int)$q['id']; ?>">
-                                                                        <i class="feather-eye"></i>
-                                                                    </a>
-                                                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-warning edit-question-btn" title="Edit" data-id="<?php echo (int)$q['id']; ?>">
-                                                                        <i class="feather-edit"></i>
-                                                                    </a>
-                                                                    <a href="delete_question.php?id=<?php echo (int)$q['id']; ?>" class="btn btn-sm btn-outline-danger" title="Delete" onclick="return confirm('Delete this question?');">
-                                                                        <i class="feather-trash-2"></i>
-                                                                    </a>
-                                                                </div>
+                                                                <a href="javascript:void(0);" class="text-secondary me-2 fs-5 view-question-btn" title="View" data-id="<?php echo (int)$q['id']; ?>">
+                                                                    <i class="feather-eye"></i>
+                                                                </a>
+                                                                <a href="javascript:void(0);" class="text-primary me-2 fs-5 edit-question-btn" title="Edit" data-id="<?php echo (int)$q['id']; ?>">
+                                                                    <i class="feather-edit"></i>
+                                                                </a>
+                                                                <a href="javascript:void(0);" class="text-danger fs-5 delete-question-btn" title="Delete" data-id="<?php echo (int)$q['id']; ?>">
+                                                                    <i class="feather-trash-2"></i>
+                                                                </a>
                                                             </td>
                                                         </tr>
                                                     <?php endforeach; ?>
@@ -399,33 +397,7 @@ if ($stmt3) {
     <!--! [End] Theme Customizer !-->
     <!--! ================================================================ !-->
     <!-- Toast container (used for success / error messages) -->
-    <!-- View Question Modal -->
-    <div class="modal fade" id="viewQuestionModal" tabindex="-1" aria-labelledby="viewQuestionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="viewQuestionModalLabel">View Question</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="viewQuestionContent">
-                        <p><strong>Question:</strong> <span id="v_question"></span></p>
-                        <p><strong>A:</strong> <span id="v_a"></span></p>
-                        <p><strong>B:</strong> <span id="v_b"></span></p>
-                        <p><strong>C:</strong> <span id="v_c"></span></p>
-                        <p><strong>D:</strong> <span id="v_d"></span></p>
-                        <p><strong>Correct:</strong> <span id="v_correct"></span></p>
-                        <p><strong>Subject:</strong> <span id="v_subject"></span></p>
-                        <p><strong>Year:</strong> <span id="v_year"></span></p>
-                        <p><strong>Remarks:</strong> <span id="v_remarks"></span></p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- View modal removed per request: markup deleted to disable view functionality -->
 
     <!-- Edit Question Modal -->
     <div class="modal fade" id="editQuestionModal" tabindex="-1" aria-labelledby="editQuestionModalLabel" aria-hidden="true">
@@ -511,6 +483,25 @@ if ($stmt3) {
         </div>
     </div>
 
+            <!-- Delete Confirmation Modal -->
+            <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p id="deleteConfirmText">Are you sure you want to delete this question?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" id="deleteConfirmBtn" class="btn btn-danger">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
     <div id="nxlToastContainer" class="position-fixed" style="right:12px; bottom:12px; z-index:999999">
         <div id="nxlToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
@@ -569,35 +560,7 @@ if ($stmt3) {
             });
         }
 
-        // Attach view button handler (delegated)
-        document.addEventListener('click', function (e) {
-            var btn = e.target.closest && e.target.closest('.view-question-btn');
-            if (!btn) return;
-            var id = btn.getAttribute('data-id');
-            if (!id) return;
-            // Fetch question details
-            fetchJson('./functions/get_question.php?id=' + encodeURIComponent(id), {credentials: 'same-origin'})
-                .then(function (json) {
-                    if (!json || !json.success) {
-                        showToast('error', json && json.error ? json.error : 'Failed to load question');
-                        return;
-                    }
-                    var d = json.data || {};
-                    document.getElementById('v_question').textContent = d.question || '';
-                    document.getElementById('v_a').textContent = d.opt_a || '';
-                    document.getElementById('v_b').textContent = d.opt_b || '';
-                    document.getElementById('v_c').textContent = d.opt_c || '';
-                    document.getElementById('v_d').textContent = d.opt_d || '';
-                    document.getElementById('v_correct').textContent = d.correct_ans || '';
-                    document.getElementById('v_subject').textContent = d.subject_name || '';
-                    document.getElementById('v_year').textContent = d.academicyear || '';
-                    document.getElementById('v_remarks').textContent = d.remarks || '';
-                    var modalEl = document.getElementById('viewQuestionModal');
-                    var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                    bsModal.show();
-                })
-                .catch(function (err) { console.error('View error:', err); showToast('error', (err && (err.message || err.toString())) || 'Network error'); });
-        });
+        // NOTE: View button handler removed per request — button remains in HTML but no JS action.
 
                 // Utility: fetch JSON and surface non-JSON errors
                 function fetchJson(url, opts) {
@@ -613,73 +576,278 @@ if ($stmt3) {
                     });
                 }
 
-                // Edit button handler
-                var currentEditRow = null;
-                document.addEventListener('click', function (e) {
-                    var btn = e.target.closest && e.target.closest('.edit-question-btn');
-                    if (!btn) return;
-                    var id = btn.getAttribute('data-id');
-                    if (!id) return;
-                    // Store row for later update
-                    currentEditRow = btn.closest('tr');
-                    fetchJson('./functions/get_question.php?id=' + encodeURIComponent(id), {credentials: 'same-origin'})
-                        .then(function (json) {
-                            if (!json || !json.success) { showToast('error', json && json.error ? json.error : 'Failed to load question'); return; }
-                            var d = json.data || {};
-                            document.getElementById('e_id').value = d.id || '';
-                            document.getElementById('e_question').value = d.question || '';
-                            document.getElementById('e_a').value = d.opt_a || '';
-                            document.getElementById('e_b').value = d.opt_b || '';
-                            document.getElementById('e_c').value = d.opt_c || '';
-                            document.getElementById('e_d').value = d.opt_d || '';
-                            document.getElementById('e_correct').value = d.correct_ans || '';
-                            document.getElementById('e_subject').value = d.subject_name || '';
-                            document.getElementById('e_year').value = d.academicyear_id || '';
-                            document.getElementById('e_remarks').value = d.remarks || '';
-                            var modalEl = document.getElementById('editQuestionModal');
-                            var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                            bsModal.show();
-                        })
-                        .catch(function (err) { console.error('Edit fetch error:', err); showToast('error', (err && (err.message || err.toString())) || 'Network error'); });
-                });
-
-                // Handle edit form submit (AJAX)
-                var editForm = document.getElementById('editQuestionForm');
-                if (editForm) {
-                    editForm.addEventListener('submit', function (ev) {
-                        ev.preventDefault();
-                        var formData = new FormData(editForm);
-                        fetchJson('./functions/update_question.php', {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                            body: formData
-                        }).then(function (json) {
-                            if (!json || !json.success) { showToast('error', json && json.error ? json.error : 'Update failed'); return; }
-                            // success: update row cells if we have the row
-                            if (currentEditRow) {
-                                var cells = currentEditRow.querySelectorAll('td');
-                                if (cells.length >= 8) {
-                                    // columns: question, A, B, C, D, correct, subject, year
-                                    cells[0].textContent = formData.get('question') || '';
-                                    cells[1].textContent = formData.get('opt_a') || '';
-                                    cells[2].textContent = formData.get('opt_b') || '';
-                                    cells[3].textContent = formData.get('opt_c') || '';
-                                    cells[4].textContent = formData.get('opt_d') || '';
-                                    cells[5].textContent = formData.get('correct') || '';
-                                    cells[6].textContent = formData.get('subject') || '';
-                                    // find selected year text
-                                    var ysel = document.getElementById('e_year');
-                                    cells[7].textContent = ysel && ysel.options[ysel.selectedIndex] ? ysel.options[ysel.selectedIndex].text : '';
+                // View button: fetch question JSON and populate the modal as read-only
+                function enableViewButtons() {
+                    var buttons = document.querySelectorAll('.view-question-btn');
+                    buttons.forEach(function (btn) {
+                        btn.addEventListener('click', function (e) {
+                            var id = btn.getAttribute('data-id');
+                            if (!id) return;
+                            var url = 'functions/questions.php?action=view&id=' + encodeURIComponent(id);
+                            fetchJson(url, { method: 'GET' }).then(function (res) {
+                                if (!res || !res.success) {
+                                    showToast('error', res && res.error ? res.error : 'Failed to load question');
+                                    return;
                                 }
-                            }
-                            // close modal
-                            var modalEl = document.getElementById('editQuestionModal');
-                            var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                            bsModal.hide();
-                            showToast('success','Question updated');
-                        }).catch(function (err) { console.error('Update submit error:', err); showToast('error', (err && (err.message || err.toString())) || 'Network error'); });
+                                var d = res.data || {};
+                                // populate fields
+                                var setVal = function(id, val){ var el = document.getElementById(id); if (!el) return; el.value = val === null || typeof val === 'undefined' ? '' : val; };
+                                setVal('e_id', d.id || '');
+                                setVal('e_question', d.question || '');
+                                setVal('e_a', d.opt_a || '');
+                                setVal('e_b', d.opt_b || '');
+                                setVal('e_c', d.opt_c || '');
+                                setVal('e_d', d.opt_d || '');
+                                setVal('e_correct', d.correct_ans || '');
+                                setVal('e_subject', d.subject_name || '');
+                                setVal('e_year', d.academicyear_id || '');
+                                setVal('e_remarks', d.remarks || '');
+
+                                // make fields read-only / disabled
+                                ['e_question','e_a','e_b','e_c','e_d','e_remarks'].forEach(function(i){ var el=document.getElementById(i); if(el) el.readOnly = true; });
+                                var selects = ['e_correct','e_subject','e_year'];
+                                selects.forEach(function(i){ var el=document.getElementById(i); if(el) el.disabled = true; });
+
+                                // hide save button in modal
+                                var submitBtn = document.querySelector('#editQuestionForm button[type="submit"]');
+                                if (submitBtn) submitBtn.style.display = 'none';
+
+                                // set modal title
+                                var title = document.getElementById('editQuestionModalLabel');
+                                if (title) title.textContent = 'View Question';
+
+                                // show modal
+                                var modalEl = document.getElementById('editQuestionModal');
+                                var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                                bsModal.show();
+
+                                // when modal closes, restore editable state
+                                modalEl.addEventListener('hidden.bs.modal', function cleanup() {
+                                    // restore fields
+                                    ['e_question','e_a','e_b','e_c','e_d','e_remarks'].forEach(function(i){ var el=document.getElementById(i); if(el) el.readOnly = false; });
+                                    selects.forEach(function(i){ var el=document.getElementById(i); if(el) el.disabled = false; });
+                                    if (submitBtn) submitBtn.style.display = '';
+                                    if (title) title.textContent = 'Edit Question';
+                                    modalEl.removeEventListener('hidden.bs.modal', cleanup);
+                                });
+                            }).catch(function (err) {
+                                showToast('error', err.message || 'Error fetching question');
+                            });
+                        });
                     });
                 }
+
+                // Initialize view buttons
+                enableViewButtons();
+
+                // Edit button: fetch question JSON, populate modal in editable mode and attach submit handler
+                function enableEditButtons() {
+                    var buttons = document.querySelectorAll('.edit-question-btn');
+                    buttons.forEach(function (btn) {
+                        btn.addEventListener('click', function (e) {
+                            var id = btn.getAttribute('data-id');
+                            if (!id) return;
+                            var url = 'functions/questions.php?action=view&id=' + encodeURIComponent(id);
+                            fetchJson(url, { method: 'GET' }).then(function (res) {
+                                if (!res || !res.success) {
+                                    showToast('error', res && res.error ? res.error : 'Failed to load question');
+                                    return;
+                                }
+                                var d = res.data || {};
+                                var setVal = function(id, val){ var el = document.getElementById(id); if (!el) return; el.value = val === null || typeof val === 'undefined' ? '' : val; };
+                                setVal('e_id', d.id || '');
+                                setVal('e_question', d.question || '');
+                                setVal('e_a', d.opt_a || '');
+                                setVal('e_b', d.opt_b || '');
+                                setVal('e_c', d.opt_c || '');
+                                setVal('e_d', d.opt_d || '');
+                                setVal('e_correct', d.correct_ans || '');
+                                setVal('e_subject', d.subject_name || '');
+                                setVal('e_year', d.academicyear_id || '');
+                                setVal('e_remarks', d.remarks || '');
+
+                                // make sure fields editable
+                                ['e_question','e_a','e_b','e_c','e_d','e_remarks'].forEach(function(i){ var el=document.getElementById(i); if(el) el.readOnly = false; });
+                                var selects = ['e_correct','e_subject','e_year'];
+                                selects.forEach(function(i){ var el=document.getElementById(i); if(el) el.disabled = false; });
+
+                                // show save button
+                                var submitBtn = document.querySelector('#editQuestionForm button[type="submit"]');
+                                if (submitBtn) submitBtn.style.display = '';
+
+                                // set modal title
+                                var title = document.getElementById('editQuestionModalLabel');
+                                if (title) title.textContent = 'Edit Question';
+
+                                // show modal
+                                var modalEl = document.getElementById('editQuestionModal');
+                                var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                                bsModal.show();
+
+                                // attach submit handler (idempotent)
+                                var form = document.getElementById('editQuestionForm');
+                                if (form && !form._hasSubmitHandler) {
+                                    form.addEventListener('submit', function (ev) {
+                                        ev.preventDefault();
+                                        var fd = new FormData(form);
+                                        fd.append('action', 'update');
+                                        // POST via fetch
+                                        fetch('functions/questions.php', { method: 'POST', body: fd }).then(function (resp) {
+                                            var ct = resp.headers.get('content-type') || '';
+                                            if (!resp.ok) return resp.text().then(function(t){ throw new Error(t || ('HTTP ' + resp.status)); });
+                                            if (ct.indexOf('application/json') === -1) return resp.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                                            return resp.json();
+                                        }).then(function (data) {
+                                            if (!data || !data.success) {
+                                                showToast('error', data && data.error ? data.error : 'Update failed');
+                                                return;
+                                            }
+                                            showToast('success', 'Question updated');
+                                            // close modal
+                                            var bs = bootstrap.Modal.getInstance(modalEl);
+                                            if (bs) bs.hide();
+
+                                            // update table row inline (find row by data-id)
+                                            try {
+                                                var qid = fd.get('id');
+                                                if (qid) {
+                                                    var rowBtn = document.querySelector('a.edit-question-btn[data-id="' + qid + '"]');
+                                                    if (!rowBtn) rowBtn = document.querySelector('a.view-question-btn[data-id="' + qid + '"]');
+                                                    if (rowBtn) {
+                                                        var tr = rowBtn.closest('tr');
+                                                        if (tr) {
+                                                            // cells: 0=question,1=A,2=B,3=C,4=D,5=Correct,6=Subject,7=Year
+                                                            var tds = tr.querySelectorAll('td');
+                                                            if (tds && tds.length >= 8) {
+                                                                tds[0].textContent = fd.get('question') || '';
+                                                                tds[1].textContent = fd.get('opt_a') || '';
+                                                                tds[2].textContent = fd.get('opt_b') || '';
+                                                                tds[3].textContent = fd.get('opt_c') || '';
+                                                                tds[4].textContent = fd.get('opt_d') || '';
+                                                                tds[5].textContent = fd.get('correct') || '';
+                                                                tds[6].textContent = fd.get('subject') || '';
+                                                                // year display may be id; try to get selected option text
+                                                                var y = fd.get('year') || '';
+                                                                var ytext = '';
+                                                                var ysel = document.getElementById('e_year');
+                                                                if (ysel) {
+                                                                    var opt = ysel.querySelector('option[value="' + y + '"]');
+                                                                    if (opt) ytext = opt.textContent;
+                                                                }
+                                                                tds[7].textContent = ytext || y;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                            }
+                                        }).catch(function (err) {
+                                            showToast('error', err.message || 'Error updating question');
+                                        });
+                                    });
+                                    form._hasSubmitHandler = true;
+                                }
+                            }).catch(function (err) {
+                                showToast('error', err.message || 'Error fetching question');
+                            });
+                        });
+                    });
+                }
+
+                // Initialize edit buttons
+                enableEditButtons();
+
+                // Delete button: confirm and delete via AJAX, then remove row inline
+                function enableDeleteButtons() {
+                    var buttons = document.querySelectorAll('.delete-question-btn');
+                    buttons.forEach(function (btn) {
+                        btn.addEventListener('click', function (e) {
+                            var id = btn.getAttribute('data-id');
+                            if (!id) return;
+                            // show confirmation modal
+                            var modalEl = document.getElementById('deleteConfirmModal');
+                            if (!modalEl) {
+                                // fallback to native confirm
+                                if (!confirm('Delete this question?')) return;
+                                performDelete(id);
+                                return;
+                            }
+                            // set message with question snippet if available
+                            var tr = btn.closest('tr');
+                            var qtext = '';
+                            if (tr) {
+                                var td = tr.querySelector('td');
+                                if (td) qtext = td.textContent.trim();
+                            }
+                            var msg = 'Are you sure you want to delete this question?';
+                            if (qtext) msg = 'Delete question: "' + qtext + '"?';
+                            var textEl = document.getElementById('deleteConfirmText');
+                            if (textEl) textEl.textContent = msg;
+
+                            // store id on modal element
+                            modalEl.dataset.deleteId = id;
+                            var bs = bootstrap.Modal.getOrCreateInstance(modalEl);
+                            bs.show();
+                        });
+                    });
+
+                    // Confirm button handler (attach once)
+                    var confirmBtn = document.getElementById('deleteConfirmBtn');
+                    var modalEl = document.getElementById('deleteConfirmModal');
+                    if (confirmBtn && modalEl && !confirmBtn._attached) {
+                        confirmBtn.addEventListener('click', function () {
+                            var id = modalEl.dataset.deleteId;
+                            if (!id) return;
+                            performDelete(id, function (success) {
+                                if (success) {
+                                    var bs = bootstrap.Modal.getInstance(modalEl);
+                                    if (bs) bs.hide();
+                                }
+                            });
+                        });
+                        confirmBtn._attached = true;
+                    }
+                }
+
+                // Perform delete AJAX and call callback(success)
+                function performDelete(id, cb) {
+                    var form = new FormData();
+                    form.append('action', 'delete');
+                    form.append('id', id);
+                    var csrf = document.querySelector('input[name="csrf_token"]');
+                    if (csrf) form.append('csrf_token', csrf.value);
+
+                    fetch('functions/questions.php', { method: 'POST', body: form }).then(function (resp) {
+                        var ct = resp.headers.get('content-type') || '';
+                        if (!resp.ok) return resp.text().then(function(t){ throw new Error(t || ('HTTP ' + resp.status)); });
+                        if (ct.indexOf('application/json') === -1) return resp.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                        return resp.json();
+                    }).then(function (data) {
+                        if (!data || !data.success) {
+                            showToast('error', data && data.error ? data.error : 'Delete failed');
+                            if (cb) cb(false);
+                            return;
+                        }
+                        // remove row
+                        var rowBtn = document.querySelector('.delete-question-btn[data-id="' + id + '"]');
+                        if (!rowBtn) rowBtn = document.querySelector('a.edit-question-btn[data-id="' + id + '"]') || document.querySelector('a.view-question-btn[data-id="' + id + '"]');
+                        if (rowBtn) {
+                            var tr = rowBtn.closest('tr');
+                            if (tr) tr.remove();
+                        }
+                        showToast('success', 'Question deleted');
+                        if (cb) cb(true);
+                    }).catch(function (err) {
+                        showToast('error', err.message || 'Error deleting question');
+                        if (cb) cb(false);
+                    });
+                }
+
+                // Initialize delete buttons
+                enableDeleteButtons();
+
+                // NOTE: Edit/update handlers removed per request — buttons and modal remain in HTML but no JS action.
     });
     </script>
     <!--! ================================================================ !-->
