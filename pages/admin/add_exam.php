@@ -502,6 +502,65 @@ if ($stmt3) {
                 </div>
             </div>
 
+                        <!-- View Question Modal (read-only, no textboxes) -->
+                        <div class="modal fade" id="viewQuestionModal" tabindex="-1" aria-labelledby="viewQuestionModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="viewQuestionModalLabel">View Question</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Question</label>
+                                            <p id="v_question" class="form-control-plaintext"></p>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Answer A</label>
+                                                <p id="v_a" class="form-control-plaintext"></p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Answer B</label>
+                                                <p id="v_b" class="form-control-plaintext"></p>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Answer C</label>
+                                                <p id="v_c" class="form-control-plaintext"></p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Answer D</label>
+                                                <p id="v_d" class="form-control-plaintext"></p>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label class="form-label">Correct Answer</label>
+                                                <p id="v_correct" class="form-control-plaintext"></p>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label class="form-label">Subject</label>
+                                                <p id="v_subject" class="form-control-plaintext"></p>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label class="form-label">Year</label>
+                                                <p id="v_year" class="form-control-plaintext"></p>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Remarks</label>
+                                            <p id="v_remarks" class="form-control-plaintext"></p>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
     <div id="nxlToastContainer" class="position-fixed" style="right:12px; bottom:12px; z-index:999999">
         <div id="nxlToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
@@ -549,14 +608,62 @@ if ($stmt3) {
                 var correct = document.getElementById('correctAnswer').value;
                 var subject = document.getElementById('examSubject').value;
                 var year = document.getElementById('examYear').value;
+                var remarks = document.getElementById('examRemarks').value || '';
                 if (!question) { showToast('error','Please enter the question'); return; }
                 if (!a || !b || !c || !d) { showToast('error','Please provide all answer options'); return; }
                 if (!correct) { showToast('error','Please select the correct answer'); return; }
                 if (!subject) { showToast('error','Please select a subject'); return; }
 
-                // Submit the form normally (no AJAX)
+                // Submit via AJAX to functions/questions.php?action=add
                 var form = document.getElementById('examForm');
-                if (form) form.submit();
+                if (!form) return;
+                var fd = new FormData(form);
+                fd.append('action', 'add');
+                fd.append('remarks', remarks);
+
+                fetch('functions/questions.php', { method: 'POST', body: fd }).then(function(resp){
+                    var ct = resp.headers.get('content-type') || '';
+                    if (!resp.ok) return resp.text().then(function(t){ throw new Error(t || ('HTTP ' + resp.status)); });
+                    if (ct.indexOf('application/json') === -1) return resp.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                    return resp.json();
+                }).then(function (data) {
+                    if (!data || !data.success) { showToast('error', data && data.error ? data.error : 'Save failed'); return; }
+                    showToast('success', 'Question saved');
+                    var id = data.id || (data.data && data.data.id) || '';
+                    var q = (data.data && data.data.question) || fd.get('question');
+                    var optA = (data.data && data.data.opt_a) || fd.get('opt_a');
+                    var optB = (data.data && data.data.opt_b) || fd.get('opt_b');
+                    var optC = (data.data && data.data.opt_c) || fd.get('opt_c');
+                    var optD = (data.data && data.data.opt_d) || fd.get('opt_d');
+                    var correctAns = (data.data && data.data.correct_ans) || fd.get('correct');
+                    var subjectName = (data.data && data.data.subject_name) || fd.get('subject');
+                    var yearText = (data.data && data.data.academicyear) || (fd.get('year') ? fd.get('year') : '');
+
+                    var actionHtml = '<a href="javascript:void(0);" class="text-secondary me-2 fs-5 view-question-btn" title="View" data-id="' + id + '"><i class="feather-eye"></i></a>' +
+                                     '<a href="javascript:void(0);" class="text-primary me-2 fs-5 edit-question-btn" title="Edit" data-id="' + id + '"><i class="feather-edit"></i></a>' +
+                                     '<a href="javascript:void(0);" class="text-danger fs-5 delete-question-btn" title="Delete" data-id="' + id + '"><i class="feather-trash-2"></i></a>';
+
+                    try {
+                        if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {
+                            var dt = $('#myTable').DataTable();
+                            var newRow = dt.row.add([q, optA, optB, optC, optD, correctAns, subjectName, yearText, actionHtml]).draw(false).node();
+                            bindQuestionRow(newRow);
+                        } else {
+                            var tbody = document.querySelector('#myTable tbody');
+                            if (tbody) {
+                                var tr = document.createElement('tr');
+                                tr.innerHTML = '<td>' + escapeHtml(q) + '</td><td>' + escapeHtml(optA) + '</td><td>' + escapeHtml(optB) + '</td><td>' + escapeHtml(optC) + '</td><td>' + escapeHtml(optD) + '</td><td>' + escapeHtml(correctAns) + '</td><td>' + escapeHtml(subjectName) + '</td><td>' + escapeHtml(yearText) + '</td><td>' + actionHtml + '</td>';
+                                tbody.insertBefore(tr, tbody.firstChild);
+                                bindQuestionRow(tr);
+                            }
+                        }
+                    } catch (e) { console.error(e); }
+
+                    // reset form
+                    form.reset();
+                }).catch(function (err) {
+                    showToast('error', err.message || 'Error saving question');
+                });
             });
         }
 
@@ -576,10 +683,11 @@ if ($stmt3) {
                     });
                 }
 
-                // View button: fetch question JSON and populate the modal as read-only
+                // View button: fetch question JSON and populate the read-only view modal (no textboxes)
                 function enableViewButtons() {
                     var buttons = document.querySelectorAll('.view-question-btn');
                     buttons.forEach(function (btn) {
+                        if (btn._bound) return; btn._bound = true;
                         btn.addEventListener('click', function (e) {
                             var id = btn.getAttribute('data-id');
                             if (!id) return;
@@ -590,46 +698,26 @@ if ($stmt3) {
                                     return;
                                 }
                                 var d = res.data || {};
-                                // populate fields
-                                var setVal = function(id, val){ var el = document.getElementById(id); if (!el) return; el.value = val === null || typeof val === 'undefined' ? '' : val; };
-                                setVal('e_id', d.id || '');
-                                setVal('e_question', d.question || '');
-                                setVal('e_a', d.opt_a || '');
-                                setVal('e_b', d.opt_b || '');
-                                setVal('e_c', d.opt_c || '');
-                                setVal('e_d', d.opt_d || '');
-                                setVal('e_correct', d.correct_ans || '');
-                                setVal('e_subject', d.subject_name || '');
-                                setVal('e_year', d.academicyear_id || '');
-                                setVal('e_remarks', d.remarks || '');
+                                // populate read-only elements
+                                var setText = function(id, val){ var el = document.getElementById(id); if (!el) return; el.textContent = val === null || typeof val === 'undefined' ? '' : val; };
+                                setText('v_question', d.question || '');
+                                setText('v_a', d.opt_a || '');
+                                setText('v_b', d.opt_b || '');
+                                setText('v_c', d.opt_c || '');
+                                setText('v_d', d.opt_d || '');
+                                setText('v_correct', d.correct_ans || '');
+                                setText('v_subject', d.subject_name || '');
+                                // prefer human-readable year if available
+                                var yearText = '';
+                                if (d.sy_start && d.sy_end) yearText = d.sy_start + ' - ' + d.sy_end;
+                                else if (d.academicyear_id) yearText = d.academicyear_id;
+                                setText('v_year', yearText);
+                                setText('v_remarks', d.remarks || '');
 
-                                // make fields read-only / disabled
-                                ['e_question','e_a','e_b','e_c','e_d','e_remarks'].forEach(function(i){ var el=document.getElementById(i); if(el) el.readOnly = true; });
-                                var selects = ['e_correct','e_subject','e_year'];
-                                selects.forEach(function(i){ var el=document.getElementById(i); if(el) el.disabled = true; });
-
-                                // hide save button in modal
-                                var submitBtn = document.querySelector('#editQuestionForm button[type="submit"]');
-                                if (submitBtn) submitBtn.style.display = 'none';
-
-                                // set modal title
-                                var title = document.getElementById('editQuestionModalLabel');
-                                if (title) title.textContent = 'View Question';
-
-                                // show modal
-                                var modalEl = document.getElementById('editQuestionModal');
+                                // show view modal
+                                var modalEl = document.getElementById('viewQuestionModal');
                                 var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
                                 bsModal.show();
-
-                                // when modal closes, restore editable state
-                                modalEl.addEventListener('hidden.bs.modal', function cleanup() {
-                                    // restore fields
-                                    ['e_question','e_a','e_b','e_c','e_d','e_remarks'].forEach(function(i){ var el=document.getElementById(i); if(el) el.readOnly = false; });
-                                    selects.forEach(function(i){ var el=document.getElementById(i); if(el) el.disabled = false; });
-                                    if (submitBtn) submitBtn.style.display = '';
-                                    if (title) title.textContent = 'Edit Question';
-                                    modalEl.removeEventListener('hidden.bs.modal', cleanup);
-                                });
                             }).catch(function (err) {
                                 showToast('error', err.message || 'Error fetching question');
                             });
@@ -644,6 +732,7 @@ if ($stmt3) {
                 function enableEditButtons() {
                     var buttons = document.querySelectorAll('.edit-question-btn');
                     buttons.forEach(function (btn) {
+                        if (btn._bound) return; btn._bound = true;
                         btn.addEventListener('click', function (e) {
                             var id = btn.getAttribute('data-id');
                             if (!id) return;
@@ -762,6 +851,7 @@ if ($stmt3) {
                 function enableDeleteButtons() {
                     var buttons = document.querySelectorAll('.delete-question-btn');
                     buttons.forEach(function (btn) {
+                        if (btn._bound) return; btn._bound = true;
                         btn.addEventListener('click', function (e) {
                             var id = btn.getAttribute('data-id');
                             if (!id) return;
@@ -809,6 +899,17 @@ if ($stmt3) {
                         confirmBtn._attached = true;
                     }
                 }
+
+                // Bind handlers for a single newly-inserted row
+                function bindQuestionRow(row) {
+                    if (!row) return;
+                    var view = row.querySelector('.view-question-btn'); if (view && !view._bound) { view._bound = true; view.addEventListener('click', function () { var id = this.dataset.id; if (!id) return; var url = 'functions/questions.php?action=view&id=' + encodeURIComponent(id); fetchJson(url, { method: 'GET' }).then(function(res){ if (!res || !res.success) { showToast('error', res && res.error ? res.error : 'Failed'); return; } var d = res.data || {}; var setText = function(id, val){ var el = document.getElementById(id); if (!el) return; el.textContent = val === null || typeof val === 'undefined' ? '' : val; }; setText('v_question', d.question || ''); setText('v_a', d.opt_a || ''); setText('v_b', d.opt_b || ''); setText('v_c', d.opt_c || ''); setText('v_d', d.opt_d || ''); setText('v_correct', d.correct_ans || ''); setText('v_subject', d.subject_name || ''); var ayText = ''; if (d.sy_start && d.sy_end) ayText = d.sy_start + ' - ' + d.sy_end; setText('v_year', ayText); var bsModal = new bootstrap.Modal(document.getElementById('viewQuestionModal')); bsModal.show(); }).catch(function(err){ showToast('error', err.message || 'Error fetching question'); }); } ); }
+                    var edit = row.querySelector('.edit-question-btn'); if (edit && !edit._bound) { edit._bound = true; edit.addEventListener('click', function(){ var id = this.dataset.id; if (!id) return; var url = 'functions/questions.php?action=view&id=' + encodeURIComponent(id); fetchJson(url, { method: 'GET' }).then(function(res){ if (!res || !res.success) { showToast('error', res && res.error ? res.error : 'Failed'); return; } var d = res.data || {}; document.getElementById('e_id').value = d.id || ''; document.getElementById('e_question').value = d.question || ''; document.getElementById('e_a').value = d.opt_a || ''; document.getElementById('e_b').value = d.opt_b || ''; document.getElementById('e_c').value = d.opt_c || ''; document.getElementById('e_d').value = d.opt_d || ''; document.getElementById('e_correct').value = d.correct_ans || ''; document.getElementById('e_subject').value = d.subject_name || ''; document.getElementById('e_remarks').value = d.remarks || ''; var m = new bootstrap.Modal(document.getElementById('editQuestionModal')); m.show(); }).catch(function(err){ showToast('error', err.message || 'Error fetching question'); }); }); }
+                    var del = row.querySelector('.delete-question-btn'); if (del && !del._bound) { del._bound = true; del.addEventListener('click', function(){ var id = this.dataset.id; if (!id) return; var modalEl = document.getElementById('deleteConfirmModal'); if (!modalEl) return; var tr = this.closest('tr'); var qtext = tr ? (tr.querySelector('td') ? tr.querySelector('td').textContent.trim() : '') : ''; var msg = qtext ? 'Delete question: "' + qtext + '"?' : 'Are you sure you want to delete this question?'; var textEl = document.getElementById('deleteConfirmText'); if (textEl) textEl.textContent = msg; modalEl.dataset.deleteId = id; var bs = bootstrap.Modal.getOrCreateInstance(modalEl); bs.show(); }); }
+                }
+
+                // simple HTML escape for insertion
+                function escapeHtml(s) { if (s === null || typeof s === 'undefined') return ''; return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
                 // Perform delete AJAX and call callback(success)
                 function performDelete(id, cb) {

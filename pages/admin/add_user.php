@@ -209,10 +209,13 @@ if (!empty($_SESSION['user_msg'])) {
                                                         <td><?php echo htmlspecialchars($u['email']); ?></td>
                                                         <td><?php echo htmlspecialchars($u['role'] ?? ''); ?></td>
                                                         <td>
-                                                            <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                            <a href="#" class="btn-view-user text-primary me-2 fs-5" data-id="<?php echo (int)$u['id']; ?>" title="View">
+                                                                <i class="feather-eye"></i>
+                                                            </a>
+                                                            <a href="#" class="btn-edit-user text-primary me-2 fs-5" data-id="<?php echo (int)$u['id']; ?>" title="Edit">
                                                                 <i class="feather-edit"></i>
                                                             </a>
-                                                            <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                            <a href="#" class="btn-delete-user text-danger fs-5" data-id="<?php echo (int)$u['id']; ?>" title="Delete">
                                                                 <i class="feather-trash-2"></i>
                                                             </a>
                                                         </td>
@@ -275,6 +278,249 @@ if (!empty($_SESSION['user_msg'])) {
             </div>
         </div>
     </div>
+
+                <!-- View User Modal (read-only) -->
+                <div class="modal fade" id="viewUserModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">User Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p><strong>Last name:</strong> <span id="v_lastname"></span></p>
+                                <p><strong>First name:</strong> <span id="v_firstname"></span></p>
+                                <p><strong>Middle name:</strong> <span id="v_middlename"></span></p>
+                                <p><strong>Email:</strong> <span id="v_email"></span></p>
+                                <p><strong>Year level:</strong> <span id="v_year_level"></span></p>
+                                <p><strong>Section:</strong> <span id="v_section"></span></p>
+                                <p><strong>Academic year:</strong> <span id="v_academicyear"></span></p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit User Modal -->
+                <div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <form id="editUserForm" class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit User</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" id="e_id" name="id" value="">
+                                <div class="mb-3">
+                                    <label for="e_lastname" class="form-label">Last name</label>
+                                    <input type="text" id="e_lastname" name="last_name" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="e_firstname" class="form-label">First name</label>
+                                    <input type="text" id="e_firstname" name="first_name" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="e_middlename" class="form-label">Middle name</label>
+                                    <input type="text" id="e_middlename" name="middle_name" class="form-control">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="e_email" class="form-label">Email</label>
+                                    <input type="email" id="e_email" name="email" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="e_password" class="form-label">Password (leave blank to keep current)</label>
+                                    <input type="password" id="e_password" name="password" class="form-control">
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="e_year_level" class="form-label">Year level</label>
+                                        <select id="e_year_level" name="year_level" class="form-select" required>
+                                            <option value="">Select Year</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                            <option value="Graduate">Graduate</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="e_section_id" class="form-label">Section</label>
+                                        <select id="e_section_id" name="section_id" class="form-select" required>
+                                            <option value="">Select Section</option>
+                                            <?php foreach ($sections as $s): ?>
+                                                <option value="<?php echo (int)$s['id']; ?>"><?php echo htmlspecialchars($s['name']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="e_academicyears_id" class="form-label">Academic year</label>
+                                        <select id="e_academicyears_id" name="academicyears_id" class="form-select" required>
+                                            <option value="">Select AY</option>
+                                            <?php foreach ($academic_years as $ay): ?>
+                                                <option value="<?php echo (int)$ay['id']; ?>"><?php echo htmlspecialchars($ay['sy_start'] . ' - ' . $ay['sy_end']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Delete User Modal -->
+                <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Confirm Delete</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to delete this user?</p>
+                                <input type="hidden" id="delete_user_id" value="">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" id="confirmDeleteUser" class="btn btn-danger">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    var baseUrl = 'functions/users.php';
+                    var csrfToken = '<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>';
+
+                    function fetchJson(url, opts) {
+                        return fetch(url, opts).then(function (res) {
+                            var ct = res.headers.get('content-type') || '';
+                            if (!res.ok) return res.text().then(function(t){ throw new Error(t || ('HTTP ' + res.status)); });
+                            if (ct.indexOf('application/json') === -1) return res.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                            return res.json();
+                        });
+                    }
+
+                    // View
+                    document.querySelectorAll('.btn-view-user').forEach(function (btn) {
+                        btn.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            var id = this.dataset.id;
+                            if (!id) return;
+                            fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' })
+                                .then(function (resp) {
+                                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed to load user'); return; }
+                                    var d = resp.data || {};
+                                    document.getElementById('v_lastname').textContent = d.last_name || '';
+                                    document.getElementById('v_firstname').textContent = d.first_name || '';
+                                    document.getElementById('v_middlename').textContent = d.middle_name || '';
+                                    document.getElementById('v_email').textContent = d.email || '';
+                                    document.getElementById('v_year_level').textContent = d.year_level || '';
+                                    // show human-readable section and academic year when available
+                                    document.getElementById('v_section').textContent = d.section_name || (d.sections_id || '');
+                                    var ayText = '';
+                                    if (d.sy_start && d.sy_end) ayText = d.sy_start + ' - ' + d.sy_end;
+                                    else if (d.academicyears_id) ayText = d.academicyears_id;
+                                    document.getElementById('v_academicyear').textContent = ayText;
+                                    var m = new bootstrap.Modal(document.getElementById('viewUserModal'));
+                                    m.show();
+                                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+                        });
+                    });
+
+                    // Edit - open modal and populate
+                    document.querySelectorAll('.btn-edit-user').forEach(function (btn) {
+                        btn.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            var id = this.dataset.id;
+                            if (!id) return;
+                            fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' })
+                                .then(function (resp) {
+                                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed to load user'); return; }
+                                    var d = resp.data || {};
+                                    document.getElementById('e_id').value = d.id || '';
+                                    document.getElementById('e_lastname').value = d.last_name || '';
+                                    document.getElementById('e_firstname').value = d.first_name || '';
+                                    document.getElementById('e_middlename').value = d.middle_name || '';
+                                    document.getElementById('e_email').value = d.email || '';
+                                    document.getElementById('e_password').value = '';
+                                    document.getElementById('e_year_level').value = d.year_level || '';
+                                    // select section by id
+                                    var sec = document.getElementById('e_section_id'); if (sec) sec.value = d.sections_id || '';
+                                    var ay = document.getElementById('e_academicyears_id'); if (ay) ay.value = d.academicyears_id || '';
+                                    var m = new bootstrap.Modal(document.getElementById('editUserModal'));
+                                    m.show();
+                                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+                        });
+                    });
+
+                    // Submit edit
+                    var editForm = document.getElementById('editUserForm');
+                    if (editForm) {
+                        editForm.addEventListener('submit', function (e) {
+                            e.preventDefault();
+                            var fd = new FormData(editForm);
+                            fd.append('action', 'update');
+                            if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
+                            fetch(baseUrl, { method: 'POST', body: fd }).then(function (resp) { return resp.json(); }).then(function (data) {
+                                if (!data || !data.success) { showToast('danger', data && data.error ? data.error : 'Update failed'); return; }
+                                showToast('success', 'User updated');
+                                location.reload();
+                            }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+                        });
+                    }
+
+                    // Delete
+                    document.querySelectorAll('.btn-delete-user').forEach(function (btn) {
+                        btn.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            var id = this.dataset.id;
+                            if (!id) return;
+                            document.getElementById('delete_user_id').value = id;
+                            var m = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+                            m.show();
+                        });
+                    });
+
+                    document.getElementById('confirmDeleteUser').addEventListener('click', function () {
+                        var id = document.getElementById('delete_user_id').value;
+                        if (!id) return;
+                        var fd = new FormData();
+                        fd.append('action', 'delete');
+                        fd.append('id', id);
+                        fd.append('csrf_token', csrfToken);
+                        fetch(baseUrl, { method: 'POST', body: fd }).then(function (resp) { return resp.json(); }).then(function (data) {
+                            if (!data || !data.success) { showToast('danger', data && data.error ? data.error : 'Delete failed'); return; }
+                            showToast('success', 'User deleted');
+                            try {
+                                var rowBtn = document.querySelector('a.btn-delete-user[data-id="' + id + '"]');
+                                if (!rowBtn) rowBtn = document.querySelector('a.btn-edit-user[data-id="' + id + '"]') || document.querySelector('a.btn-view-user[data-id="' + id + '"]');
+                                if (rowBtn) {
+                                    var tr = rowBtn.closest('tr');
+                                    if (tr) {
+                                        // If DataTable is active, remove via its API to keep UI consistent
+                                        if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {
+                                            var dt = $('#myTable').DataTable();
+                                            dt.row(tr).remove().draw(false);
+                                        } else {
+                                            tr.remove();
+                                        }
+                                    }
+                                }
+                            } catch (e) { console.error(e); }
+                            var modal = bootstrap.Modal.getInstance(document.getElementById('deleteUserModal'));
+                            if (modal) modal.hide();
+                        }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+                    });
+                });
+                </script>
     <!--! ================================================================ !-->
     <!--! END: Downloading Toast !-->
     <!--! ================================================================ !-->
@@ -325,7 +571,7 @@ if (!empty($_SESSION['user_msg'])) {
     <!-- Create User Modal -->
     <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <form method="post" class="modal-content">
+            <form method="post" class="modal-content" id="createUserForm">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createUserLabel">Create User</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -396,19 +642,123 @@ if (!empty($_SESSION['user_msg'])) {
 
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        var btn = document.getElementById('saveUserBtn');
-        if (btn) {
-            btn.addEventListener('click', function () {
-                var name = document.getElementById('userName').value.trim();
-                var email = document.getElementById('userEmail').value.trim();
-                var pass = document.getElementById('userPassword').value;
-                var role = document.getElementById('userRole').value;
-                if (!name || !email || !pass) {
-                    alert('Please complete all required fields');
-                    return;
-                }
-                // Temporary behaviour: log the new user. Replace with AJAX if needed.
-                console.log('New user:', { name: name, email: email, role: role });
+        var form = document.getElementById('createUserForm');
+        var baseUrl = 'functions/users.php';
+        var csrfToken = '<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>';
+
+        function fetchJson(url, opts) {
+            return fetch(url, opts).then(function (res) {
+                var ct = res.headers.get('content-type') || '';
+                if (!res.ok) return res.text().then(function(t){ throw new Error(t || ('HTTP ' + res.status)); });
+                if (ct.indexOf('application/json') === -1) return res.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                return res.json();
+            });
+        }
+
+        function bindRowButtons(tr) {
+            if (!tr) return;
+            var viewBtn = tr.querySelector('.btn-view-user');
+            if (viewBtn) viewBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var id = this.dataset.id;
+                if (!id) return;
+                fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' })
+                    .then(function (resp) {
+                        if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed to load user'); return; }
+                        var d = resp.data || {};
+                        document.getElementById('v_lastname').textContent = d.last_name || '';
+                        document.getElementById('v_firstname').textContent = d.first_name || '';
+                        document.getElementById('v_middlename').textContent = d.middle_name || '';
+                        document.getElementById('v_email').textContent = d.email || '';
+                        document.getElementById('v_year_level').textContent = d.year_level || '';
+                        document.getElementById('v_section').textContent = d.section_name || (d.sections_id || '');
+                        var ayText = '';
+                        if (d.sy_start && d.sy_end) ayText = d.sy_start + ' - ' + d.sy_end;
+                        else if (d.academicyears_id) ayText = d.academicyears_id;
+                        document.getElementById('v_academicyear').textContent = ayText;
+                        var m = new bootstrap.Modal(document.getElementById('viewUserModal'));
+                        m.show();
+                    }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+            });
+
+            var editBtn = tr.querySelector('.btn-edit-user');
+            if (editBtn) editBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var id = this.dataset.id;
+                if (!id) return;
+                fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' })
+                    .then(function (resp) {
+                        if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed to load user'); return; }
+                        var d = resp.data || {};
+                        document.getElementById('e_id').value = d.id || '';
+                        document.getElementById('e_lastname').value = d.last_name || '';
+                        document.getElementById('e_firstname').value = d.first_name || '';
+                        document.getElementById('e_middlename').value = d.middle_name || '';
+                        document.getElementById('e_email').value = d.email || '';
+                        document.getElementById('e_password').value = '';
+                        document.getElementById('e_year_level').value = d.year_level || '';
+                        var sec = document.getElementById('e_section_id'); if (sec) sec.value = d.sections_id || '';
+                        var ay = document.getElementById('e_academicyears_id'); if (ay) ay.value = d.academicyears_id || '';
+                        var m = new bootstrap.Modal(document.getElementById('editUserModal'));
+                        m.show();
+                    }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+            });
+
+            var delBtn = tr.querySelector('.btn-delete-user');
+            if (delBtn) delBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var id = this.dataset.id;
+                if (!id) return;
+                document.getElementById('delete_user_id').value = id;
+                var m = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+                m.show();
+            });
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var fd = new FormData(form);
+                fd.append('action', 'add');
+                if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
+                fetch(baseUrl, { method: 'POST', body: fd }).then(function (resp) { return resp.json(); }).then(function (data) {
+                    if (!data || !data.success) { showToast('danger', data && data.error ? data.error : 'Add failed'); return; }
+                    showToast('success', 'User added');
+                    var id = data.id || '';
+                    var full = data.full_name || (fd.get('firstname') + ' ' + (fd.get('middlename') || '') + ' ' + fd.get('lastname'));
+                    var email = data.email || fd.get('email');
+                    var role = data.role || '';
+                    var actionHtml = '<a href="#" class="btn-view-user text-primary me-2 fs-5" data-id="' + id + '" title="View"><i class="feather-eye"></i></a>' +
+                                     '<a href="#" class="btn-edit-user text-primary me-2 fs-5" data-id="' + id + '" title="Edit"><i class="feather-edit"></i></a>' +
+                                     '<a href="#" class="btn-delete-user text-danger fs-5" data-id="' + id + '" title="Delete"><i class="feather-trash-2"></i></a>';
+
+                    try {
+                        if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {
+                            var dt = $('#myTable').DataTable();
+                            var newRow = dt.row.add([full, email, role, actionHtml]).draw(false).node();
+                            // bind events on new row
+                            bindRowButtons(newRow);
+                        } else {
+                            var tbody = document.querySelector('#myTable tbody');
+                            if (tbody) {
+                                var tr = document.createElement('tr');
+                                tr.innerHTML = '<td>' + full + '</td><td>' + email + '</td><td>' + role + '</td><td>' + actionHtml + '</td>';
+                                tbody.appendChild(tr);
+                                bindRowButtons(tr);
+                            }
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+
+                    // hide modal and reset form
+                    var mEl = document.getElementById('createUserModal');
+                    if (mEl) {
+                        var inst = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl);
+                        inst.hide();
+                    }
+                    form.reset();
+                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
             });
         }
     });

@@ -185,10 +185,13 @@ if (!empty($_SESSION['session_msg'])) {
                                                         <td><?php echo htmlspecialchars($s['sy_end']); ?></td>
                                                         <td><span class="badge <?php echo $badge; ?>"><?php echo $status_text; ?></span></td>
                                                         <td>
-                                                            <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                            <a href="#" class="btn-view-session text-secondary me-2 fs-5" data-id="<?php echo (int)$s['id']; ?>" title="View">
+                                                                <i class="feather-eye"></i>
+                                                            </a>
+                                                            <a href="#" class="btn-edit-session text-primary me-2 fs-5" data-id="<?php echo (int)$s['id']; ?>" title="Edit">
                                                                 <i class="feather-edit"></i>
                                                             </a>
-                                                            <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                            <a href="#" class="btn-delete-session text-danger fs-5" data-id="<?php echo (int)$s['id']; ?>" title="Delete">
                                                                 <i class="feather-trash-2"></i>
                                                             </a>
                                                         </td>
@@ -297,11 +300,142 @@ if (!empty($_SESSION['session_msg'])) {
     });
     <?php endif; ?>
     </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var baseUrl = 'functions/sessions.php';
+        var csrfToken = '<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>';
+
+        function fetchJson(url, opts) {
+            return fetch(url, opts).then(function (res) {
+                var ct = res.headers.get('content-type') || '';
+                if (!res.ok) return res.text().then(function(t){ throw new Error(t || ('HTTP ' + res.status)); });
+                if (ct.indexOf('application/json') === -1) return res.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                return res.json();
+            });
+        }
+
+        function bindRowButtons(tr) {
+            if (!tr) return;
+            var view = tr.querySelector('.btn-view-session');
+            if (view && !view._bound) { view._bound = true; view.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function (resp) { if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed'); return; } var d = resp.data || {}; document.getElementById('v_sy_start').textContent = d.sy_start || ''; document.getElementById('v_sy_end').textContent = d.sy_end || ''; document.getElementById('v_sy_status').textContent = d.is_active ? 'Active' : 'Inactive'; var m = new bootstrap.Modal(document.getElementById('viewSessionModal')); m.show(); }).catch(function (err) { showToast('danger', err.message || 'Request failed'); }); }); }
+
+            var edit = tr.querySelector('.btn-edit-session');
+            if (edit && !edit._bound) { edit._bound = true; edit.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function (resp) { if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed'); return; } var d = resp.data || {}; document.getElementById('e_session_id').value = d.id || ''; document.getElementById('e_syStart').value = (d.sy_start ? (d.sy_start + '-01') : ''); document.getElementById('e_syEnd').value = (d.sy_end ? (d.sy_end + '-01') : ''); document.getElementById('e_sessionStatus').value = d.is_active ? 'Active' : 'Inactive'; var m = new bootstrap.Modal(document.getElementById('editSessionModal')); m.show(); }).catch(function (err) { showToast('danger', err.message || 'Request failed'); }); }); }
+
+            var del = tr.querySelector('.btn-delete-session');
+            if (del && !del._bound) { del._bound = true; del.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; document.getElementById('delete_session_id').value = id; var m = new bootstrap.Modal(document.getElementById('deleteSessionModal')); m.show(); }); }
+        }
+
+        // bind existing rows
+        document.querySelectorAll('#myTable tbody tr').forEach(function (r) { bindRowButtons(r); });
+
+        // Create session via AJAX
+        var createForm = document.getElementById('createSessionForm');
+        if (createForm) {
+            createForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var fd = new FormData(createForm);
+                fd.append('action', 'add');
+                if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
+                fetchJson(baseUrl, { method: 'POST', body: fd }).then(function (resp) {
+                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Add failed'); return; }
+                    showToast('success', 'Session added');
+                    var id = resp.id || (resp.data && resp.data.id) || '';
+                    var syStart = (resp.data && resp.data.sy_start) || (fd.get('sy_start') ? fd.get('sy_start').substr(0,4) : '');
+                    var syEnd = (resp.data && resp.data.sy_end) || (fd.get('sy_end') ? fd.get('sy_end').substr(0,4) : '');
+                    var isActive = (resp.data && resp.data.is_active) ? 1 : 0;
+                    var statusText = isActive ? 'Active' : 'Inactive';
+                    var badge = isActive ? 'bg-success' : 'bg-secondary';
+                    var actionHtml = '<a href="#" class="btn-view-session text-secondary me-2 fs-5" data-id="' + id + '" title="View"><i class="feather-eye"></i></a>' +
+                                     '<a href="#" class="btn-edit-session text-primary me-2 fs-5" data-id="' + id + '" title="Edit"><i class="feather-edit"></i></a>' +
+                                     '<a href="#" class="btn-delete-session text-danger fs-5" data-id="' + id + '" title="Delete"><i class="feather-trash-2"></i></a>';
+                    try {
+                        if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {
+                            var dt = $('#myTable').DataTable();
+                            var newRow = dt.row.add([syStart, syEnd, '<span class="badge ' + badge + '">' + statusText + '</span>', actionHtml]).draw(false).node();
+                            bindRowButtons(newRow);
+                        } else {
+                            var tbody = document.querySelector('#myTable tbody');
+                            if (tbody) {
+                                var tr = document.createElement('tr');
+                                tr.innerHTML = '<td>' + (syStart || '') + '</td><td>' + (syEnd || '') + '</td><td><span class="badge ' + badge + '">' + statusText + '</span></td><td>' + actionHtml + '</td>';
+                                tbody.insertBefore(tr, tbody.firstChild);
+                                bindRowButtons(tr);
+                            }
+                        }
+                    } catch (err) { console.error(err); }
+                    var mEl = document.getElementById('createSessionModal'); if (mEl) { var inst = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl); inst.hide(); }
+                    createForm.reset();
+                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+            });
+        }
+
+        // Edit submit
+        var editForm = document.getElementById('editSessionForm');
+        if (editForm) {
+            editForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var fd = new FormData(editForm);
+                fd.append('action', 'update');
+                if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
+                fetchJson(baseUrl, { method: 'POST', body: fd }).then(function (resp) {
+                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Update failed'); return; }
+                    showToast('success', 'Session updated');
+                    var id = fd.get('id');
+                    var syStart = fd.get('sy_start') ? fd.get('sy_start').substr(0,4) : '';
+                    var syEnd = fd.get('sy_end') ? fd.get('sy_end').substr(0,4) : '';
+                    var isActive = fd.get('session_status') === 'Active';
+                    var badge = isActive ? 'bg-success' : 'bg-secondary';
+                    var statusText = isActive ? 'Active' : 'Inactive';
+                    try {
+                        var rowBtn = document.querySelector('a.btn-edit-session[data-id="' + id + '"]');
+                        if (!rowBtn) rowBtn = document.querySelector('a.btn-view-session[data-id="' + id + '"]');
+                        if (rowBtn) {
+                            var tr = rowBtn.closest('tr');
+                            if (tr) {
+                                var tds = tr.querySelectorAll('td');
+                                if (tds && tds.length >= 4) {
+                                    tds[0].textContent = syStart;
+                                    tds[1].textContent = syEnd;
+                                    tds[2].innerHTML = '<span class="badge ' + badge + '">' + statusText + '</span>';
+                                }
+                            }
+                        }
+                    } catch (e) { console.error(e); }
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('editSessionModal'));
+                    if (modal) modal.hide();
+                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+            });
+        }
+
+        // Delete confirm
+        var confirmDel = document.getElementById('confirmDeleteSession');
+        if (confirmDel) {
+            confirmDel.addEventListener('click', function () {
+                var id = document.getElementById('delete_session_id').value;
+                if (!id) return;
+                var fd = new FormData(); fd.append('action', 'delete'); fd.append('id', id); fd.append('csrf_token', csrfToken);
+                fetchJson(baseUrl, { method: 'POST', body: fd }).then(function (resp) {
+                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Delete failed'); return; }
+                    showToast('success', 'Session deleted');
+                    try {
+                        var rowBtn = document.querySelector('a.btn-delete-session[data-id="' + id + '"]');
+                        if (!rowBtn) rowBtn = document.querySelector('a.btn-edit-session[data-id="' + id + '"]') || document.querySelector('a.btn-view-session[data-id="' + id + '"]');
+                        if (rowBtn) { var tr = rowBtn.closest('tr'); if (tr) tr.remove(); }
+                    } catch (e) { console.error(e); }
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('deleteSessionModal'));
+                    if (modal) modal.hide();
+                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+            });
+        }
+
+    });
+    </script>
     <!--! ================================================================ !-->
     <!-- Create Session Modal (form POST) -->
     <div class="modal fade" id="createSessionModal" tabindex="-1" aria-labelledby="createSessionLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <form method="post" class="modal-content">
+            <form method="post" class="modal-content" id="createSessionForm">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createSessionLabel">Create Session</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -329,6 +463,80 @@ if (!empty($_SESSION['session_msg'])) {
                     <button type="submit" name="add_session" class="btn btn-primary">Add Session</button>
                 </div>
             </form>
+        </div>
+    </div>
+    <!-- View Session Modal -->
+    <div class="modal fade" id="viewSessionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Session Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>SY Start:</strong> <span id="v_sy_start"></span></p>
+                    <p><strong>SY End:</strong> <span id="v_sy_end"></span></p>
+                    <p><strong>Status:</strong> <span id="v_sy_status"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Session Modal -->
+    <div class="modal fade" id="editSessionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form id="editSessionForm" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Session</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="e_session_id" name="id" value="">
+                    <div class="mb-3">
+                        <label for="e_syStart" class="form-label">SY Start</label>
+                        <input type="month" id="e_syStart" name="sy_start" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="e_syEnd" class="form-label">SY End</label>
+                        <input type="month" id="e_syEnd" name="sy_end" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="e_sessionStatus" class="form-label">Status</label>
+                        <select id="e_sessionStatus" name="session_status" class="form-select">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Session Modal -->
+    <div class="modal fade" id="deleteSessionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this session?</p>
+                    <input type="hidden" id="delete_session_id" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmDeleteSession" class="btn btn-danger">Delete</button>
+                </div>
+            </div>
         </div>
     </div>
     <!--! ================================================================ !-->

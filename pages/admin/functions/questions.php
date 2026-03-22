@@ -226,8 +226,8 @@ function update_question($conn, $id, $question, $opt_a, $opt_b, $opt_c, $opt_d, 
     return ['success' => false, 'error' => 'Database error (update failed).'];
 }
 
-// JSON POST endpoint to update question: POST action=update
-if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
+// JSON POST endpoint to add/update question: POST action=add|update
+if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array($_POST['action'], ['add','update'], true)) {
     if (!isset($conn) || !$conn) {
         @include_once __DIR__ . '/../../../db/dbcon.php';
     }
@@ -244,6 +244,39 @@ if (php_sapi_name() !== 'cli' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
         exit;
     }
 
+    $action = $_POST['action'];
+    if ($action === 'add') {
+        $question = $_POST['question'] ?? '';
+        $a = $_POST['opt_a'] ?? '';
+        $b = $_POST['opt_b'] ?? '';
+        $c = $_POST['opt_c'] ?? '';
+        $d = $_POST['opt_d'] ?? '';
+        $correct = $_POST['correct'] ?? '';
+        $subject = $_POST['subject'] ?? '';
+        $year = isset($_POST['year']) ? ($_POST['year'] === '' ? null : (int)$_POST['year']) : null;
+        $remarks = $_POST['remarks'] ?? '';
+
+        if (!isset($conn) || !$conn) {
+            echo json_encode(['success' => false, 'error' => 'Database connection not available']);
+            exit;
+        }
+
+        $res = add_question($conn, $question, $a, $b, $c, $d, $correct, $subject, $year, $remarks);
+        if (!empty($res['success']) && !empty($res['id'])) {
+            // fetch full data for the newly created question
+            $q = view_question_json($conn, $res['id']);
+            if (!empty($q['success'])) {
+                echo json_encode(['success' => true, 'id' => (int)$res['id'], 'data' => $q['data']]);
+                exit;
+            }
+            echo json_encode(['success' => true, 'id' => (int)$res['id']]);
+            exit;
+        }
+        echo json_encode($res);
+        exit;
+    }
+
+    // fall through to update handler
     $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
     $question = $_POST['question'] ?? '';
     $a = $_POST['opt_a'] ?? '';

@@ -173,10 +173,13 @@ if (!empty($_SESSION['section_msg'])) {
                                                     <tr>
                                                         <td><?php echo htmlspecialchars($sec['name']); ?></td>
                                                         <td>
-                                                            <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                            <a href="#" class="btn-view-section text-secondary me-2 fs-5" data-id="<?php echo (int)$sec['id']; ?>" title="View">
+                                                                <i class="feather-eye"></i>
+                                                            </a>
+                                                            <a href="#" class="btn-edit-section text-primary me-2 fs-5" data-id="<?php echo (int)$sec['id']; ?>" title="Edit">
                                                                 <i class="feather-edit"></i>
                                                             </a>
-                                                            <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                            <a href="#" class="btn-delete-section text-danger fs-5" data-id="<?php echo (int)$sec['id']; ?>" title="Delete">
                                                                 <i class="feather-trash-2"></i>
                                                             </a>
                                                         </td>
@@ -289,7 +292,7 @@ if (!empty($_SESSION['section_msg'])) {
     <!-- Create Section Modal (form POST) -->
     <div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <form method="post" class="modal-content">
+            <form method="post" class="modal-content" id="createSectionForm">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createSectionLabel">Create Section</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -308,6 +311,188 @@ if (!empty($_SESSION['section_msg'])) {
             </form>
         </div>
     </div>
+    <!-- View Section Modal -->
+    <div class="modal fade" id="viewSectionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Section Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Name:</strong> <span id="v_section_name"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Section Modal -->
+    <div class="modal fade" id="editSectionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form id="editSectionForm" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Section</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="e_section_id" name="id" value="">
+                    <div class="mb-3">
+                        <label for="e_section_name" class="form-label">Section Name</label>
+                        <input type="text" id="e_section_name" name="name" class="form-control" required>
+                    </div>
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Section Modal -->
+    <div class="modal fade" id="deleteSectionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this section?</p>
+                    <input type="hidden" id="delete_section_id" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmDeleteSection" class="btn btn-danger">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var baseUrl = 'functions/sections.php';
+        var csrfToken = '<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>';
+
+        function fetchJson(url, opts) {
+            return fetch(url, opts).then(function (res) {
+                var ct = res.headers.get('content-type') || '';
+                if (!res.ok) return res.text().then(function(t){ throw new Error(t || ('HTTP ' + res.status)); });
+                if (ct.indexOf('application/json') === -1) return res.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                return res.json();
+            });
+        }
+
+        function bindRowButtons(tr) {
+            if (!tr) return;
+            var view = tr.querySelector('.btn-view-section');
+            if (view && !view._bound) { view._bound = true; view.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function(resp){ if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed'); return; } var d = resp.data || {}; document.getElementById('v_section_name').textContent = d.name || ''; var m = new bootstrap.Modal(document.getElementById('viewSectionModal')); m.show(); }).catch(function(err){ showToast('danger', err.message || 'Request failed'); }); }); }
+
+            var edit = tr.querySelector('.btn-edit-section');
+            if (edit && !edit._bound) { edit._bound = true; edit.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function(resp){ if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed'); return; } var d = resp.data || {}; document.getElementById('e_section_id').value = d.id || ''; document.getElementById('e_section_name').value = d.name || ''; var m = new bootstrap.Modal(document.getElementById('editSectionModal')); m.show(); }).catch(function(err){ showToast('danger', err.message || 'Request failed'); }); }); }
+
+            var del = tr.querySelector('.btn-delete-section');
+            if (del && !del._bound) { del._bound = true; del.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; document.getElementById('delete_section_id').value = id; var m = new bootstrap.Modal(document.getElementById('deleteSectionModal')); m.show(); }); }
+        }
+
+        // bind existing rows
+        document.querySelectorAll('#myTable tbody tr').forEach(function (r) { bindRowButtons(r); });
+
+        // Create form AJAX
+        var createForm = document.getElementById('createSectionForm');
+        if (createForm) {
+            createForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var fd = new FormData(createForm);
+                fd.append('action', 'add');
+                if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
+                fetchJson(baseUrl, { method: 'POST', body: fd }).then(function (resp) {
+                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Add failed'); return; }
+                    showToast('success', 'Section added');
+                    var id = resp.id || (resp.data && resp.data.id) || '';
+                    var name = (resp.data && resp.data.name) || fd.get('section_name');
+                    var actionHtml = '<a href="#" class="btn-view-section text-secondary me-2 fs-5" data-id="' + id + '" title="View"><i class="feather-eye"></i></a>' +
+                                     '<a href="#" class="btn-edit-section text-primary me-2 fs-5" data-id="' + id + '" title="Edit"><i class="feather-edit"></i></a>' +
+                                     '<a href="#" class="btn-delete-section text-danger fs-5" data-id="' + id + '" title="Delete"><i class="feather-trash-2"></i></a>';
+                    try {
+                        if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {
+                            var dt = $('#myTable').DataTable();
+                            var newRow = dt.row.add([name, actionHtml]).draw(false).node();
+                            bindRowButtons(newRow);
+                        } else {
+                            var tbody = document.querySelector('#myTable tbody');
+                            if (tbody) {
+                                var tr = document.createElement('tr');
+                                tr.innerHTML = '<td>' + (name || '') + '</td><td>' + actionHtml + '</td>';
+                                tbody.appendChild(tr);
+                                bindRowButtons(tr);
+                            }
+                        }
+                    } catch (err) { console.error(err); }
+                    var mEl = document.getElementById('createSectionModal'); if (mEl) { var inst = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl); inst.hide(); }
+                    createForm.reset();
+                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+            });
+        }
+
+        // Submit edit form
+        var editForm = document.getElementById('editSectionForm');
+        if (editForm) {
+            editForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var fd = new FormData(editForm);
+                fd.append('action', 'update');
+                if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
+                fetchJson(baseUrl, { method: 'POST', body: fd }).then(function (resp) {
+                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Update failed'); return; }
+                    showToast('success', 'Section updated');
+                    var id = fd.get('id');
+                    try {
+                        var rowBtn = document.querySelector('a.btn-edit-section[data-id="' + id + '"]');
+                        if (!rowBtn) rowBtn = document.querySelector('a.btn-view-section[data-id="' + id + '"]');
+                        if (rowBtn) {
+                            var tr = rowBtn.closest('tr');
+                            if (tr) {
+                                var tds = tr.querySelectorAll('td');
+                                if (tds && tds.length >= 1) tds[0].textContent = fd.get('name') || document.getElementById('e_section_name').value;
+                            }
+                        }
+                    } catch (e) { console.error(e); }
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('editSectionModal'));
+                    if (modal) modal.hide();
+                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+            });
+        }
+
+        // Delete confirm
+        var confirmDel = document.getElementById('confirmDeleteSection');
+        if (confirmDel) {
+            confirmDel.addEventListener('click', function () {
+                var id = document.getElementById('delete_section_id').value;
+                if (!id) return;
+                var fd = new FormData(); fd.append('action', 'delete'); fd.append('id', id); fd.append('csrf_token', csrfToken);
+                fetchJson(baseUrl, { method: 'POST', body: fd }).then(function (resp) {
+                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Delete failed'); return; }
+                    showToast('success', 'Section deleted');
+                    try {
+                        var rowBtn = document.querySelector('a.btn-delete-section[data-id="' + id + '"]');
+                        if (!rowBtn) rowBtn = document.querySelector('a.btn-edit-section[data-id="' + id + '"]') || document.querySelector('a.btn-view-section[data-id="' + id + '"]');
+                        if (rowBtn) {
+                            var tr = rowBtn.closest('tr'); if (tr) tr.remove();
+                        }
+                    } catch (e) { console.error(e); }
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('deleteSectionModal'));
+                    if (modal) modal.hide();
+                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+            });
+        }
+
+    });
+    </script>
     <!--! ================================================================ !-->
     <!--! Footer Script !-->
     <!--! ================================================================ !-->

@@ -164,8 +164,8 @@ if (php_sapi_name() !== 'cli') {
         exit;
     }
 
-    // POST handlers for update and delete
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array($_POST['action'], ['update','delete'], true)) {
+    // POST handlers for add, update and delete
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && in_array($_POST['action'], ['add','update','delete'], true)) {
         if (!isset($conn) || !$conn) {
             @include_once __DIR__ . '/../../../db/dbcon.php';
         }
@@ -181,6 +181,19 @@ if (php_sapi_name() !== 'cli') {
         if (!isset($conn) || !$conn) { echo json_encode(['success' => false, 'error' => 'Database connection not available']); exit; }
 
         $action = $_POST['action'];
+        if ($action === 'add') {
+            $name = $_POST['subject_name'] ?? ($_POST['name'] ?? '');
+            $code = $_POST['subject_code'] ?? ($_POST['code'] ?? '');
+            $res = add_subject($conn, $name, $code);
+            if (!empty($res['success']) && !empty($res['id'])) {
+                // return created subject data
+                echo json_encode(['success' => true, 'id' => (int)$res['id'], 'data' => ['id' => (int)$res['id'], 'name' => $name, 'code' => $code]]);
+                exit;
+            }
+            echo json_encode($res);
+            exit;
+        }
+
         if ($action === 'update') {
             $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
             $name = $_POST['name'] ?? '';

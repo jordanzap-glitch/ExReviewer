@@ -177,10 +177,13 @@ if (!empty($_SESSION['subject_msg'])) {
                                                         <td><?php echo htmlspecialchars($sub['name']); ?></td>
                                                         <td><?php echo htmlspecialchars($sub['code']); ?></td>
                                                         <td>
-                                                            <a href="javascript:void(0);" class="text-primary me-2 fs-5" title="Edit">
+                                                            <a href="#" class="btn-view-subject text-primary me-2 fs-5" data-id="<?php echo (int)$sub['id']; ?>" title="View">
+                                                                <i class="feather-eye"></i>
+                                                            </a>
+                                                            <a href="#" class="btn-edit-subject text-primary me-2 fs-5" data-id="<?php echo (int)$sub['id']; ?>" title="Edit">
                                                                 <i class="feather-edit"></i>
                                                             </a>
-                                                            <a href="javascript:void(0);" class="text-danger fs-5" title="Delete">
+                                                            <a href="#" class="btn-delete-subject text-danger fs-5" data-id="<?php echo (int)$sub['id']; ?>" title="Delete">
                                                                 <i class="feather-trash-2"></i>
                                                             </a>
                                                         </td>
@@ -289,11 +292,198 @@ if (!empty($_SESSION['subject_msg'])) {
     });
     <?php endif; ?>
     </script>
+    <!-- View / Edit / Delete Modals -->
+    <div class="modal fade" id="viewSubjectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Subject Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Name:</strong> <span id="viewSubjectName"></span></p>
+                    <p><strong>Code:</strong> <span id="viewSubjectCode"></span></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editSubjectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form id="editSubjectForm" class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Subject</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_subject_name" class="form-label">Subject Name</label>
+                        <input type="text" id="edit_subject_name" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_subject_code" class="form-label">Subject Code</label>
+                        <input type="text" id="edit_subject_code" name="code" class="form-control" required>
+                    </div>
+                    <input type="hidden" id="edit_subject_id" name="id" value="">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteSubjectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this subject?</p>
+                    <input type="hidden" id="delete_subject_id" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmDeleteSubject" class="btn btn-danger">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var baseUrl = 'functions/subjects.php';
+        var csrfToken = '<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>';
+
+        function ajaxPost(data) {
+            return fetch(baseUrl, { method: 'POST', body: data }).then(function (res) { return res.json(); });
+        }
+
+        // View
+        document.querySelectorAll('.btn-view-subject').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var id = this.dataset.id;
+                fetch(baseUrl + '?action=view&id=' + encodeURIComponent(id))
+                    .then(function (r) { return r.json(); })
+                    .then(function (resp) {
+                        if (resp.success) {
+                            document.getElementById('viewSubjectName').textContent = resp.data.name;
+                            document.getElementById('viewSubjectCode').textContent = resp.data.code;
+                            var m = new bootstrap.Modal(document.getElementById('viewSubjectModal'));
+                            m.show();
+                        } else {
+                            showToast('danger', resp.error || 'Could not load subject');
+                        }
+                    }).catch(function () { showToast('danger', 'Request failed'); });
+            });
+        });
+
+        // Edit - open modal and populate
+        document.querySelectorAll('.btn-edit-subject').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var id = this.dataset.id;
+                fetch(baseUrl + '?action=view&id=' + encodeURIComponent(id))
+                    .then(function (r) { return r.json(); })
+                    .then(function (resp) {
+                        if (resp.success) {
+                            document.getElementById('edit_subject_name').value = resp.data.name;
+                            document.getElementById('edit_subject_code').value = resp.data.code;
+                            document.getElementById('edit_subject_id').value = resp.data.id;
+                            var m = new bootstrap.Modal(document.getElementById('editSubjectModal'));
+                            m.show();
+                        } else {
+                            showToast('danger', resp.error || 'Could not load subject');
+                        }
+                    }).catch(function () { showToast('danger', 'Request failed'); });
+            });
+        });
+
+        // Edit form submit
+        document.getElementById('editSubjectForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var fd = new FormData(this);
+            fd.append('action', 'update');
+            // ensure csrf present
+            if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
+            ajaxPost(fd).then(function (resp) {
+                if (resp && resp.success) {
+                    showToast('success', 'Subject updated');
+                    try {
+                        var sid = fd.get('id') || document.getElementById('edit_subject_id').value;
+                        if (sid) {
+                            var rowBtn = document.querySelector('a.btn-edit-subject[data-id="' + sid + '"]');
+                            if (!rowBtn) rowBtn = document.querySelector('a.btn-view-subject[data-id="' + sid + '"]');
+                            if (rowBtn) {
+                                var tr = rowBtn.closest('tr');
+                                if (tr) {
+                                    var tds = tr.querySelectorAll('td');
+                                    if (tds && tds.length >= 3) {
+                                        tds[0].textContent = fd.get('name') || fd.get('subject_name') || document.getElementById('edit_subject_name').value;
+                                        tds[1].textContent = fd.get('code') || fd.get('subject_code') || document.getElementById('edit_subject_code').value;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) { console.error(e); }
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('editSubjectModal'));
+                    if (modal) modal.hide();
+                } else {
+                    showToast('danger', resp && resp.error ? resp.error : 'Update failed');
+                }
+            }).catch(function () { showToast('danger', 'Request failed'); });
+        });
+
+        // Delete - open confirm
+        document.querySelectorAll('.btn-delete-subject').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var id = this.dataset.id;
+                document.getElementById('delete_subject_id').value = id;
+                var m = new bootstrap.Modal(document.getElementById('deleteSubjectModal'));
+                m.show();
+            });
+        });
+
+        document.getElementById('confirmDeleteSubject').addEventListener('click', function () {
+            var id = document.getElementById('delete_subject_id').value;
+            var fd = new FormData();
+            fd.append('action', 'delete');
+            fd.append('id', id);
+            fd.append('csrf_token', csrfToken);
+            ajaxPost(fd).then(function (resp) {
+                if (resp && resp.success) {
+                    showToast('success', 'Subject deleted');
+                    try {
+                        var rowBtn = document.querySelector('a.btn-delete-subject[data-id="' + id + '"]');
+                        if (!rowBtn) rowBtn = document.querySelector('a.btn-edit-subject[data-id="' + id + '"]') || document.querySelector('a.btn-view-subject[data-id="' + id + '"]');
+                        if (rowBtn) {
+                            var tr = rowBtn.closest('tr');
+                            if (tr) tr.remove();
+                        }
+                    } catch (e) { console.error(e); }
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('deleteSubjectModal'));
+                    if (modal) modal.hide();
+                } else {
+                    showToast('danger', resp && resp.error ? resp.error : 'Delete failed');
+                }
+            }).catch(function () { showToast('danger', 'Request failed'); });
+        });
+    });
+    </script>
     <!--! ================================================================ !-->
     <!-- Create Subject Modal (form POST) -->
     <div class="modal fade" id="createSubjectModal" tabindex="-1" aria-labelledby="createSubjectLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <form method="post" class="modal-content">
+            <div class="modal-dialog modal-dialog-centered">
+                <form method="post" class="modal-content" id="createSubjectForm">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createSubjectLabel">Create Subject</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -316,6 +506,97 @@ if (!empty($_SESSION['subject_msg'])) {
             </form>
         </div>
     </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.getElementById('createSubjectForm');
+        var baseUrl = 'functions/subjects.php';
+        var csrfToken = '<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>';
+
+        function ajaxPost(fd) {
+            return fetch(baseUrl, { method: 'POST', body: fd }).then(function (res) {
+                var ct = res.headers.get('content-type') || '';
+                if (!res.ok) return res.text().then(function(t){ throw new Error(t || ('HTTP ' + res.status)); });
+                if (ct.indexOf('application/json') === -1) return res.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                return res.json();
+            });
+        }
+
+        function bindRowButtons(tr) {
+            if (!tr) return;
+            var viewBtn = tr.querySelector('.btn-view-subject');
+            if (viewBtn && !viewBtn._bound) {
+                viewBtn._bound = true;
+                viewBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var id = this.dataset.id;
+                    fetch(baseUrl + '?action=view&id=' + encodeURIComponent(id)).then(function(r){ return r.json(); }).then(function(resp){ if (resp && resp.success) { document.getElementById('viewSubjectName').textContent = resp.data.name; document.getElementById('viewSubjectCode').textContent = resp.data.code; var m = new bootstrap.Modal(document.getElementById('viewSubjectModal')); m.show(); } else { showToast('danger', resp && resp.error ? resp.error : 'Could not load subject'); } }).catch(function(){ showToast('danger', 'Request failed'); });
+                });
+            }
+            var editBtn = tr.querySelector('.btn-edit-subject');
+            if (editBtn && !editBtn._bound) {
+                editBtn._bound = true;
+                editBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var id = this.dataset.id;
+                    fetch(baseUrl + '?action=view&id=' + encodeURIComponent(id)).then(function(r){ return r.json(); }).then(function(resp){ if (resp && resp.success) { document.getElementById('edit_subject_name').value = resp.data.name; document.getElementById('edit_subject_code').value = resp.data.code; document.getElementById('edit_subject_id').value = resp.data.id; var m = new bootstrap.Modal(document.getElementById('editSubjectModal')); m.show(); } else { showToast('danger', resp && resp.error ? resp.error : 'Could not load subject'); } }).catch(function(){ showToast('danger', 'Request failed'); });
+                });
+            }
+            var delBtn = tr.querySelector('.btn-delete-subject');
+            if (delBtn && !delBtn._bound) {
+                delBtn._bound = true;
+                delBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var id = this.dataset.id;
+                    document.getElementById('delete_subject_id').value = id;
+                    var m = new bootstrap.Modal(document.getElementById('deleteSubjectModal'));
+                    m.show();
+                });
+            }
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var fd = new FormData(form);
+                fd.append('action', 'add');
+                if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
+                ajaxPost(fd).then(function (resp) {
+                    if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Add failed'); return; }
+                    showToast('success', 'Subject added');
+                    var id = resp.id || (resp.data && resp.data.id) || '';
+                    var name = (resp.data && resp.data.name) || fd.get('subject_name');
+                    var code = (resp.data && resp.data.code) || fd.get('subject_code');
+                    var actionHtml = '<a href="#" class="btn-view-subject text-primary me-2 fs-5" data-id="' + id + '" title="View"><i class="feather-eye"></i></a>' +
+                                     '<a href="#" class="btn-edit-subject text-primary me-2 fs-5" data-id="' + id + '" title="Edit"><i class="feather-edit"></i></a>' +
+                                     '<a href="#" class="btn-delete-subject text-danger fs-5" data-id="' + id + '" title="Delete"><i class="feather-trash-2"></i></a>';
+                    try {
+                        if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {
+                            var dt = $('#myTable').DataTable();
+                            var newRow = dt.row.add([name, code, actionHtml]).draw(false).node();
+                            bindRowButtons(newRow);
+                        } else {
+                            var tbody = document.querySelector('#myTable tbody');
+                            if (tbody) {
+                                var tr = document.createElement('tr');
+                                tr.innerHTML = '<td>' + (name || '') + '</td><td>' + (code || '') + '</td><td>' + actionHtml + '</td>';
+                                tbody.appendChild(tr);
+                                bindRowButtons(tr);
+                            }
+                        }
+                    } catch (err) { console.error(err); }
+
+                    // hide modal and reset
+                    var mEl = document.getElementById('createSubjectModal');
+                    if (mEl) {
+                        var inst = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl);
+                        inst.hide();
+                    }
+                    form.reset();
+                }).catch(function () { showToast('danger', 'Request failed'); });
+            });
+        }
+    });
+    </script>
     <!--! ================================================================ !-->
     <!--! Footer Script !-->
     <!--! ================================================================ !-->
