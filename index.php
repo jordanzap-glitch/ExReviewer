@@ -54,7 +54,7 @@ function login($conn)
                     header('Location: pages/admin/index.php');
                     exit;
                 } else {
-                    header('Location: student/index.php');
+                    header('Location: pages/student/index.php');
                     exit;
                 }
             } else {

@@ -8,6 +8,8 @@ $user_msg = null;
 // fetch dropdown data
 $sections = get_sections($conn);
 $academic_years = get_active_academicyears($conn);
+// fetch usertypes for edit dropdown
+$usertypes = get_usertypes($conn);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
     if (empty($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
@@ -45,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
         'year_level' => $_POST['year_level'] ?? '',
         'section_id' => $resolved_section_id,
         'academicyears_id' => $_POST['academicyears_id'] ?? 0,
+        'usertypes_id' => isset($_POST['usertypes_id']) ? (int)$_POST['usertypes_id'] : 0,
     ];
     $res = add_user($conn, $data);
     if ($res['success']) {
@@ -334,7 +337,7 @@ if (!empty($_SESSION['user_msg'])) {
                                     <input type="password" id="e_password" name="password" class="form-control">
                                 </div>
                                 <div class="row g-2">
-                                    <div class="col-md-4 mb-3">
+                                    <div class="col-md-6 mb-3">
                                         <label for="e_year_level" class="form-label">Year level</label>
                                         <select id="e_year_level" name="year_level" class="form-select" required>
                                             <option value="">Select Year</option>
@@ -345,7 +348,7 @@ if (!empty($_SESSION['user_msg'])) {
                                             <option value="Graduate">Graduate</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-4 mb-3">
+                                    <div class="col-md-6 mb-3">
                                         <label for="e_section_id" class="form-label">Section</label>
                                         <select id="e_section_id" name="section_id" class="form-select" required>
                                             <option value="">Select Section</option>
@@ -354,12 +357,23 @@ if (!empty($_SESSION['user_msg'])) {
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
-                                    <div class="col-md-4 mb-3">
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6 mb-3">
                                         <label for="e_academicyears_id" class="form-label">Academic year</label>
                                         <select id="e_academicyears_id" name="academicyears_id" class="form-select" required>
                                             <option value="">Select AY</option>
                                             <?php foreach ($academic_years as $ay): ?>
                                                 <option value="<?php echo (int)$ay['id']; ?>"><?php echo htmlspecialchars($ay['sy_start'] . ' - ' . $ay['sy_end']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="e_usertypes_id" class="form-label">User type</label>
+                                        <select id="e_usertypes_id" name="usertypes_id" class="form-select">
+                                            <option value="">Select type</option>
+                                            <?php foreach ($usertypes as $ut): ?>
+                                                <option value="<?php echo (int)$ut['id']; ?>"><?php echo htmlspecialchars($ut['name']); ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
@@ -600,7 +614,7 @@ if (!empty($_SESSION['user_msg'])) {
                         <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required>
                     </div>
                     <div class="row g-2">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label for="year_level" class="form-label">Year level</label>
                             <select id="year_level" name="year_level" class="form-select" required>
                                 <option value="">Select Year</option>
@@ -611,7 +625,7 @@ if (!empty($_SESSION['user_msg'])) {
                                 <option value="Graduate">Graduate</option>
                             </select>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label for="section_id" class="form-label">Section</label>
                             <select id="section_id" name="section_id" class="form-select" required>
                                 <option value="">Select Section</option>
@@ -620,12 +634,23 @@ if (!empty($_SESSION['user_msg'])) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-4 mb-3">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-3">
                             <label for="academicyears_id" class="form-label">Academic year</label>
                             <select id="academicyears_id" name="academicyears_id" class="form-select" required>
                                 <option value="">Select AY</option>
                                 <?php foreach ($academic_years as $ay): ?>
                                     <option value="<?php echo (int)$ay['id']; ?>"><?php echo htmlspecialchars($ay['sy_start'] . ' - ' . $ay['sy_end']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="usertypes_id" class="form-label">User type</label>
+                            <select id="usertypes_id" name="usertypes_id" class="form-select">
+                                <option value="">Select type</option>
+                                <?php foreach ($usertypes as $ut): ?>
+                                    <option value="<?php echo (int)$ut['id']; ?>"><?php echo htmlspecialchars($ut['name']); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -699,6 +724,7 @@ if (!empty($_SESSION['user_msg'])) {
                         document.getElementById('e_year_level').value = d.year_level || '';
                         var sec = document.getElementById('e_section_id'); if (sec) sec.value = d.sections_id || '';
                         var ay = document.getElementById('e_academicyears_id'); if (ay) ay.value = d.academicyears_id || '';
+                        var ut = document.getElementById('e_usertypes_id'); if (ut) ut.value = d.usertypes_id || '';
                         var m = new bootstrap.Modal(document.getElementById('editUserModal'));
                         m.show();
                     }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });

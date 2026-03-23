@@ -22,6 +22,18 @@ function get_active_academicyears($conn) {
 }
 
 /**
+ * Get all usertypes
+ */
+function get_usertypes($conn) {
+    $rows = [];
+    $res = mysqli_query($conn, "SELECT id, name FROM tbl_usertypes ORDER BY name");
+    if ($res) {
+        while ($r = mysqli_fetch_assoc($res)) $rows[] = $r;
+    }
+    return $rows;
+}
+
+/**
  * Add a user to tbl_users.
  * Expects $data array with keys: last_name, first_name, middle_name, email, password, year_level, section_id, academicyears_id
  */
@@ -60,16 +72,20 @@ function add_user($conn, array $data) {
     }
     mysqli_stmt_close($stmt);
 
-    $hashed = password_hash($password, PASSWORD_DEFAULT);
-
-    // determine default user type id (Student) if available
-    $usertype_id = null;
-    $ut = mysqli_prepare($conn, "SELECT id FROM tbl_usertypes WHERE name = 'Student' LIMIT 1");
-    if ($ut) {
-        mysqli_stmt_execute($ut);
-        mysqli_stmt_bind_result($ut, $utid);
-        if (mysqli_stmt_fetch($ut)) $usertype_id = (int)$utid;
-        mysqli_stmt_close($ut);
+    // store password as provided (no hashing)
+    $hashed = $password;
+    // determine user type id: prefer provided value, fallback to 'Student' default
+    $usertype_id = 0;
+    if (isset($data['usertypes_id']) && (int)$data['usertypes_id'] > 0) {
+        $usertype_id = (int)$data['usertypes_id'];
+    } else {
+        $ut = mysqli_prepare($conn, "SELECT id FROM tbl_usertypes WHERE name = 'Student' LIMIT 1");
+        if ($ut) {
+            mysqli_stmt_execute($ut);
+            mysqli_stmt_bind_result($ut, $utid);
+            if (mysqli_stmt_fetch($ut)) $usertype_id = (int)$utid;
+            mysqli_stmt_close($ut);
+        }
     }
 
     // prepare insert including usertypes_id
@@ -159,6 +175,7 @@ function update_user($conn, $id, array $data)
     $year_level = $data['year_level'] ?? '';
     $section_id = isset($data['section_id']) ? (int)$data['section_id'] : 0;
     $academicyears_id = isset($data['academicyears_id']) ? (int)$data['academicyears_id'] : 0;
+    $usertypes_id = isset($data['usertypes_id']) ? (int)$data['usertypes_id'] : 0;
 
     if ($last === '' || $first === '' || $email === '') return ['success' => false, 'error' => 'Required fields missing.'];
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'error' => 'Invalid email address'];
@@ -177,16 +194,17 @@ function update_user($conn, $id, array $data)
     // build update SQL; include password only when provided
     $password = $data['password'] ?? '';
     if ($password !== '') {
-        $hashed = password_hash($password, PASSWORD_DEFAULT);
-        $sql = "UPDATE tbl_users SET last_name = ?, first_name = ?, middle_name = ?, email = ?, password = ?, year_level = ?, sections_id = ?, academicyears_id = ? WHERE id = ?";
+        // store password as provided (no hashing)
+        $hashed = $password;
+        $sql = "UPDATE tbl_users SET last_name = ?, first_name = ?, middle_name = ?, email = ?, password = ?, year_level = ?, sections_id = ?, academicyears_id = ?, usertypes_id = ? WHERE id = ?";
         $stmt = mysqli_prepare($conn, $sql);
         if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
-        mysqli_stmt_bind_param($stmt, 'ssssssiii', $last, $first, $middle, $email, $hashed, $year_level, $section_id, $academicyears_id, $id);
+        mysqli_stmt_bind_param($stmt, 'ssssssiiii', $last, $first, $middle, $email, $hashed, $year_level, $section_id, $academicyears_id, $usertypes_id, $id);
     } else {
-        $sql = "UPDATE tbl_users SET last_name = ?, first_name = ?, middle_name = ?, email = ?, year_level = ?, sections_id = ?, academicyears_id = ? WHERE id = ?";
+        $sql = "UPDATE tbl_users SET last_name = ?, first_name = ?, middle_name = ?, email = ?, year_level = ?, sections_id = ?, academicyears_id = ?, usertypes_id = ? WHERE id = ?";
         $stmt = mysqli_prepare($conn, $sql);
         if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
-        mysqli_stmt_bind_param($stmt, 'sssssiii', $last, $first, $middle, $email, $year_level, $section_id, $academicyears_id, $id);
+        mysqli_stmt_bind_param($stmt, 'sssssiiii', $last, $first, $middle, $email, $year_level, $section_id, $academicyears_id, $usertypes_id, $id);
     }
 
     if (mysqli_stmt_execute($stmt)) return ['success' => true];
@@ -276,6 +294,7 @@ if (php_sapi_name() !== 'cli') {
                 'year_level' => $_POST['year_level'] ?? '',
                 'section_id' => $resolved_section_id,
                 'academicyears_id' => isset($_POST['academicyears_id']) ? (int)$_POST['academicyears_id'] : 0,
+                'usertypes_id' => isset($_POST['usertypes_id']) ? (int)$_POST['usertypes_id'] : 0,
             ];
             $res = add_user($conn, $data);
             echo json_encode($res);
@@ -293,6 +312,7 @@ if (php_sapi_name() !== 'cli') {
                 'year_level' => $_POST['year_level'] ?? '',
                 'section_id' => isset($_POST['section_id']) ? (int)$_POST['section_id'] : 0,
                 'academicyears_id' => isset($_POST['academicyears_id']) ? (int)$_POST['academicyears_id'] : 0,
+                'usertypes_id' => isset($_POST['usertypes_id']) ? (int)$_POST['usertypes_id'] : 0,
             ];
             $res = update_user($conn, $id, $data);
             echo json_encode($res);
