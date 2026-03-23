@@ -1,33 +1,33 @@
 <?php include "includes/init.php"; ?>
 
 <?php
-// Load modules for selected subject_id and render as cards
+// Load modules for selected subjects_id and render as cards
 $modules = [];
 $subject = null;
-$subject_id = isset($_GET['subject_id']) ? (int)$_GET['subject_id'] : 0;
+$subjects_id = isset($_GET['subjects_id']) ? (int)$_GET['subjects_id'] : 0;
 // Ensure DB connection exists; try to include dbcon if not present
 if (!isset($conn) && file_exists(__DIR__ . '/../../db/dbcon.php')) {
     require_once __DIR__ . '/../../db/dbcon.php';
 }
-if ($subject_id > 0 && isset($conn)) {
+if ($subjects_id > 0 && isset($conn)) {
     try {
         if ($conn instanceof PDO) {
             $sstmt = $conn->prepare("SELECT id, name FROM tbl_subjects WHERE id = :id LIMIT 1");
-            $sstmt->execute([':id' => $subject_id]);
+            $sstmt->execute([':id' => $subjects_id]);
             $subject = $sstmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
             $mstmt = $conn->prepare("SELECT id, file_path FROM tbl_modules WHERE subjects_id = :id ORDER BY id ASC");
-            $mstmt->execute([':id' => $subject_id]);
+            $mstmt->execute([':id' => $subjects_id]);
             $modules = $mstmt->fetchAll(PDO::FETCH_ASSOC);
         } elseif ($conn instanceof mysqli) {
-            $sid = $conn->real_escape_string($subject_id);
+            $sid = $conn->real_escape_string($subjects_id);
             $sres = $conn->query("SELECT id, name FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
             if ($sres) $subject = $sres->fetch_assoc();
 
             $mres = $conn->query("SELECT id, file_path FROM tbl_modules WHERE subjects_id = {$sid} ORDER BY id ASC");
             if ($mres) { while ($row = $mres->fetch_assoc()) $modules[] = $row; }
         } else {
-            $sid = (int)$subject_id;
+            $sid = (int)$subjects_id;
             $sres = @$conn->query("SELECT id, name FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
             if ($sres && is_object($sres)) $subject = $sres->fetch_assoc();
             $mres = @$conn->query("SELECT id, file_path FROM tbl_modules WHERE subjects_id = {$sid} ORDER BY id ASC");
@@ -37,6 +37,8 @@ if ($subject_id > 0 && isset($conn)) {
         // ignore DB errors to preserve layout
     }
 }
+// Application base (e.g. /exrev) derived from script path — go up three levels to reach project root
+$appBase = rtrim(str_replace('\\', '/', dirname(dirname(dirname($_SERVER['SCRIPT_NAME'])))), '/');
 ?>
 <!DOCTYPE html>
 <html lang="zxx">
@@ -156,7 +158,7 @@ if ($subject_id > 0 && isset($conn)) {
             <!-- [ Main Content ] start -->
             <div class="main-content">
                 <div class="row g-3">
-                    <?php if ($subject_id <= 0): ?>
+                    <?php if ($subjects_id <= 0): ?>
                         <div class="col-12"><div class="alert alert-warning">No subject selected. Please go back and choose a subject.</div></div>
                     <?php else: ?>
                         <div class="col-12 mb-3">
@@ -174,10 +176,11 @@ if ($subject_id > 0 && isset($conn)) {
                                             $fp = isset($mod['file_path']) ? ltrim($mod['file_path'], '/\\') : '';
                                             // basic sanitization: remove any path traversal
                                             $fp = str_replace(array('..\\','../'), '', $fp);
-                                            $href = $fp ? ('/learning_modules/' . $fp) : '#';
+                                            $clean = ltrim($fp, '/\\');
+                                            $href = $clean ? ($appBase . '/' . $clean) : '#';
                                             ?>
-                                            <button type="button" class="btn btn-outline-primary btn-view-module" data-file="<?php echo htmlspecialchars($fp); ?>" data-title="<?php echo htmlspecialchars($title); ?>">Open</button>
-                                            <a href="/learning_modules/<?php echo htmlspecialchars($fp); ?>" download class="btn btn-secondary">Download</a>
+                                            <button type="button" class="btn btn-outline-primary btn-view-module" data-id="<?php echo (int)$mod['id']; ?>" data-file="<?php echo htmlspecialchars($clean); ?>" data-title="<?php echo htmlspecialchars($title); ?>">Open</button>
+                                            <a href="<?php echo htmlspecialchars($href); ?>" download class="btn btn-secondary">Download</a>
                                         </div>
                                     </div>
                                 </div>
@@ -365,26 +368,52 @@ if ($subject_id > 0 && isset($conn)) {
    <?php include "includes/scripts.php"; ?>
     <script>
     (function(){
+        // expose server-computed app base to client
+        var nxlAppBase = '<?php echo $appBase; ?>';
+
         document.addEventListener('click', function(e){
             var btn = e.target.closest && e.target.closest('.btn-view-module');
             if (!btn) return;
             e.preventDefault();
+            var id = btn.getAttribute('data-id') || '';
             var fp = btn.getAttribute('data-file') || '';
             var title = btn.getAttribute('data-title') || 'Module Viewer';
-            if (!fp) {
-                alert('No file available');
+
+            function openFilePath(path) {
+                if (!path) { alert('No file available'); return; }
+                // sanitize path and remove traversal
+                path = path.replace(/(\.\.\\|\.\.\/)/g, '');
+                path = path.replace(/^\/+/, '');
+                // build URL including app base when present
+                var prefix = (nxlAppBase && nxlAppBase !== '/') ? nxlAppBase : '';
+                var url = (prefix ? prefix + '/' : '/') + encodeURI(path);
+                var frame = document.getElementById('viewModuleFrame');
+                var modTitle = document.getElementById('viewModuleTitle');
+                var dl = document.getElementById('viewModuleDownload');
+                if (frame) frame.src = url;
+                if (modTitle) modTitle.textContent = title;
+                if (dl) { dl.href = url; dl.setAttribute('download', ''); }
+                var m = new bootstrap.Modal(document.getElementById('viewModuleModal'));
+                m.show();
+            }
+
+            if (fp) {
+                // fp is stored path relative to project (e.g. pages/student/learning_modules/..)
+                openFilePath(fp);
                 return;
             }
-            // build safe URL
-            var url = '/learning_modules/' + encodeURI(fp);
-            var frame = document.getElementById('viewModuleFrame');
-            var modTitle = document.getElementById('viewModuleTitle');
-            var dl = document.getElementById('viewModuleDownload');
-            if (frame) frame.src = url;
-            if (modTitle) modTitle.textContent = title;
-            if (dl) { dl.href = url; dl.setAttribute('download', ''); }
-            var m = new bootstrap.Modal(document.getElementById('viewModuleModal'));
-            m.show();
+
+            // No data-file provided: fetch from server by module id
+            if (!id) { alert('No file available'); return; }
+            fetch((nxlAppBase ? nxlAppBase : '') + '/pages/admin/functions/modules.php?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function(res){
+                return res.json();
+            }).then(function(json){
+                if (!json || !json.success || !json.data || !json.data.file_path) {
+                    alert((json && json.error) ? json.error : 'File not found');
+                    return;
+                }
+                openFilePath(json.data.file_path);
+            }).catch(function(err){ alert(err.message || 'Request failed'); });
         });
         // clear iframe src on modal hide to stop playback
         var vm = document.getElementById('viewModuleModal');

@@ -19,12 +19,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_module'])) {
     $file_path = '';
     if (!empty($_FILES['module_file']) && empty($_FILES['module_file']['error'])) {
         $u = $_FILES['module_file'];
-        $uploadDir = __DIR__ . '/../../learning_modules';
+        $uploadDir = __DIR__ . '/../../student/learning_modules';
         if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
         $fname = time() . '_' . preg_replace('/[^A-Za-z0-9_.-]/', '_', basename($u['name']));
         $dest = $uploadDir . DIRECTORY_SEPARATOR . $fname;
         if (@move_uploaded_file($u['tmp_name'], $dest)) {
-            $file_path = 'learning_modules/' . $fname;
+            $file_path = 'pages/student/learning_modules/' . $fname;
         }
     }
     if ($file_path === '') {

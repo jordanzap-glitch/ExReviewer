@@ -1,4 +1,57 @@
 <?php include "includes/init.php"; ?>
+<?php
+// Ensure DB connection exists; try to include dbcon if not present
+if (!isset($conn) && file_exists(__DIR__ . '/../../db/dbcon.php')) {
+    require_once __DIR__ . '/../../db/dbcon.php';
+}
+// Load questions for selected subject
+$questions = [];
+$subject_name = '';
+$subjects_id = isset($_GET['subjects_id']) ? (int)$_GET['subjects_id'] : 0;
+if (isset($conn) && $subjects_id > 0) {
+    try {
+        $rows = [];
+        if ($conn instanceof PDO) {
+            $sstmt = $conn->prepare("SELECT name FROM tbl_subjects WHERE id = :id LIMIT 1");
+            $sstmt->execute([':id' => $subjects_id]);
+            $s = $sstmt->fetch(PDO::FETCH_ASSOC);
+            $subject_name = $s['name'] ?? '';
+
+            $qstmt = $conn->prepare("SELECT id, question, opt_a, opt_b, opt_c, opt_d, correct_ans, subjects_id, remarks FROM tbl_question_bank WHERE subjects_id = :id ORDER BY id ASC");
+            $qstmt->execute([':id' => $subjects_id]);
+            $rows = $qstmt->fetchAll(PDO::FETCH_ASSOC);
+        } elseif ($conn instanceof mysqli) {
+            $sid = (int)$subjects_id;
+            $sres = $conn->query("SELECT name FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
+            if ($sres) { $r = $sres->fetch_assoc(); $subject_name = $r['name'] ?? ''; }
+            $qres = $conn->query("SELECT id, question, opt_a, opt_b, opt_c, opt_d, correct_ans, subjects_id, remarks FROM tbl_question_bank WHERE subjects_id = {$sid} ORDER BY id ASC");
+            if ($qres) { while ($row = $qres->fetch_assoc()) $rows[] = $row; }
+        } else {
+            $sid = (int)$subjects_id;
+            $qres = @$conn->query("SELECT id, question, opt_a, opt_b, opt_c, opt_d, correct_ans, subjects_id, remarks FROM tbl_question_bank WHERE subjects_id = {$sid} ORDER BY id ASC");
+            if ($qres && is_object($qres)) { while ($row = $qres->fetch_assoc()) $rows[] = $row; }
+        }
+
+        foreach ($rows as $r) {
+            $questions[] = [
+                'id' => (int)$r['id'],
+                'question' => $r['question'],
+                'answers' => [
+                    'A' => $r['opt_a'],
+                    'B' => $r['opt_b'],
+                    'C' => $r['opt_c'],
+                    'D' => $r['opt_d']
+                ],
+                'correct_ans' => $r['correct_ans'],
+                'subjects_id' => (int)$r['subjects_id'],
+                'remarks' => $r['remarks']
+            ];
+        }
+    } catch (Exception $e) {
+        // ignore DB errors to preserve layout
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="zxx">
 
@@ -212,79 +265,42 @@
     </div>
 
     <script>
+    // embed server-provided questions and subject for client-side use
+    var questions = <?php echo json_encode($questions, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?> || [];
+    var examSubject = <?php echo json_encode($subject_name, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?> || '';
+
     function showToast(type, message, delay) {
         delay = delay || 3000;
         var toastEl = document.getElementById('nxlToast');
         var body = document.getElementById('nxlToastBody');
-        if (!toastEl || !body) {
-            alert(message);
-            return;
-        }
+        if (!toastEl || !body) { alert(message); return; }
         toastEl.classList.remove('bg-success','bg-danger','bg-primary','bg-secondary');
         if (type === 'success') toastEl.classList.add('bg-success');
         else if (type === 'error' || type === 'danger') toastEl.classList.add('bg-danger');
         else toastEl.classList.add('bg-primary');
         body.textContent = message;
-        var bsToast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: delay });
-        bsToast.show();
+        bootstrap.Toast.getOrCreateInstance(toastEl, { delay: delay }).show();
+    }
+
+    // Fisher-Yates shuffle
+    function shuffleArray(a) {
+        for (var i = a.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+        }
+        return a;
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Sample questions for the student to take — replace with server-provided data
-        var questions = [
-            {
-                id: 1,
-                question: 'What is the derivative of x^2?',
-                answers: { A: '2x', B: 'x', C: '1', D: '0' },
-                subject: 'Calculus I',
-                year: '2024'
-            },
-            {
-                id: 2,
-                question: 'Which language uses printf?',
-                answers: { A: 'Python', B: 'JavaScript', C: 'C', D: 'Ruby' },
-                subject: 'Intro to Programming',
-                year: '2024'
-            }
-        ];
-
         var current = 0;
         var answers = {};
-
-        var examDuration = 15 * 60; // seconds (15 minutes)
+        var examDuration = 15 * 60; // seconds
         var examTimer = null;
+        var examRemaining = 0; // seconds left (kept outside timer so submit can stop it)
 
         var startBtn = document.getElementById('startExamBtn');
         var examContainerEl = document.getElementById('examContainer');
         var timerDisplay = document.getElementById('timerDisplay');
-
-        function formatTime(seconds) {
-            var m = Math.floor(seconds / 60);
-            var s = seconds % 60;
-            return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-        }
-
-        function startTimer() {
-            var remaining = examDuration;
-            timerDisplay.textContent = formatTime(remaining);
-            examTimer = setInterval(function() {
-                remaining--;
-                timerDisplay.textContent = formatTime(remaining);
-                if (remaining <= 0) {
-                    clearInterval(examTimer);
-                    showToast('error','Time is up — submitting exam');
-                    submitBtn.click();
-                }
-            }, 1000);
-        }
-
-        startBtn && startBtn.addEventListener('click', function() {
-            // show exam UI and start timer
-            if (examContainerEl) examContainerEl.style.display = '';
-            startBtn.disabled = true;
-            startTimer();
-        });
-
         var questionNumber = document.getElementById('questionNumber');
         var questionText = document.getElementById('questionText');
         var optionsList = document.getElementById('optionsList');
@@ -292,17 +308,50 @@
         var nextBtn = document.getElementById('nextBtn');
         var submitBtn = document.getElementById('submitBtn');
 
+        function formatTime(seconds) { var m = Math.floor(seconds/60); var s = seconds%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+
+        function startTimer() {
+            examRemaining = examDuration;
+            timerDisplay.textContent = formatTime(examRemaining);
+            examTimer = setInterval(function(){
+                examRemaining--;
+                timerDisplay.textContent = formatTime(examRemaining);
+                if (examRemaining <= 0) {
+                    clearInterval(examTimer);
+                    examTimer = null;
+                    showToast('error','Time is up — submitting exam');
+                    submitBtn.click();
+                }
+            }, 1000);
+        }
+
+        function prepareExam() {
+            // shuffle questions
+            shuffleArray(questions);
+            // for each question, prepare shuffled answers array
+            for (var i = 0; i < questions.length; i++) {
+                var q = questions[i];
+                var ansObj = q.answers || {};
+                var arr = [];
+                for (var k in ansObj) { arr.push({ key: k, text: ansObj[k] || '' }); }
+                q.shuffledAnswers = shuffleArray(arr);
+            }
+        }
+
         function renderQuestion(index) {
+            if (!questions || !questions.length) return;
             var q = questions[index];
-            questionNumber.textContent = 'Question ' + (index + 1) + ' of ' + questions.length + ' — ' + q.subject + ' (' + q.year + ')';
-            questionText.textContent = q.question;
+            questionNumber.textContent = 'Question ' + (index + 1) + ' of ' + questions.length + (examSubject ? ' — ' + examSubject : '');
+            questionText.textContent = q.question || '';
             optionsList.innerHTML = '';
-            for (var key in q.answers) {
-                var id = 'opt_' + key;
+            var choices = q.shuffledAnswers || [];
+            for (var i = 0; i < choices.length; i++) {
+                var item = choices[i];
+                var id = 'opt_' + index + '_' + item.key;
                 var div = document.createElement('div');
                 div.className = 'form-check mb-2';
-                div.innerHTML = '<input class="form-check-input" type="radio" name="examOption" id="' + id + '" value="' + key + '">'
-                    + '<label class="form-check-label ms-2" for="' + id + '"><strong>' + key + '.</strong> ' + q.answers[key] + '</label>';
+                div.innerHTML = '<input class="form-check-input" type="radio" name="examOption" id="' + id + '" value="' + item.key + '">'
+                    + '<label class="form-check-label ms-2" for="' + id + '"><strong>' + item.key + '.</strong> ' + (item.text || '') + '</label>';
                 optionsList.appendChild(div);
             }
             // restore selection if previously answered
@@ -314,36 +363,6 @@
             nextBtn.disabled = (index === questions.length - 1);
         }
 
-        prevBtn.addEventListener('click', function () {
-            saveCurrentAnswer();
-            if (current > 0) {
-                current--;
-                renderQuestion(current);
-            }
-        });
-
-        nextBtn.addEventListener('click', function () {
-            if (!saveCurrentAnswer()) { showToast('error','Please select an answer before continuing'); return; }
-            if (current < questions.length - 1) {
-                current++;
-                renderQuestion(current);
-            }
-        });
-
-        submitBtn.addEventListener('click', function () {
-            if (!saveCurrentAnswer()) { showToast('error','Please select an answer before submitting'); return; }
-            // Check all answered
-            for (var i = 0; i < questions.length; i++) {
-                if (!answers[questions[i].id]) { showToast('error','Please answer all questions'); return; }
-            }
-            // Submit payload (replace with AJAX call)
-            var payload = questions.map(function(q) { return { id: q.id, answer: answers[q.id] }; });
-            console.log('Student answers:', payload);
-            showToast('success','Exam submitted — good luck!');
-            // Optionally disable controls
-            prevBtn.disabled = true; nextBtn.disabled = true; submitBtn.disabled = true;
-        });
-
         function saveCurrentAnswer() {
             var sel = document.querySelector('input[name="examOption"]:checked');
             if (!sel) return false;
@@ -352,8 +371,57 @@
             return true;
         }
 
-        // initial render
-        renderQuestion(current);
+        prevBtn.addEventListener('click', function(){ saveCurrentAnswer(); if (current > 0) { current--; renderQuestion(current); } });
+        nextBtn.addEventListener('click', function(){ if (!saveCurrentAnswer()) { showToast('error','Please select an answer before continuing'); return; } if (current < questions.length - 1) { current++; renderQuestion(current); } });
+
+        submitBtn.addEventListener('click', function(){
+            if (!saveCurrentAnswer()) { showToast('error','Please select an answer before submitting'); return; }
+            for (var i = 0; i < questions.length; i++) { if (!answers[questions[i].id]) { showToast('error','Please answer all questions'); return; } }
+            // compute score
+            var correct = 0;
+            for (var i = 0; i < questions.length; i++) {
+                var q = questions[i];
+                if (!q || typeof q.correct_ans === 'undefined') continue;
+                if (answers[q.id] && String(answers[q.id]) === String(q.correct_ans)) correct++;
+            }
+            var payload = {
+                subjects_id: <?php echo (int)$subjects_id; ?>,
+                score: correct,
+                details: questions.map(function(q){ return { id: q.id, answer: answers[q.id] || null, correct: q.correct_ans }; })
+            };
+
+            // stop the timer immediately upon submission
+            if (examTimer) { clearInterval(examTimer); examTimer = null; }
+            fetch('functions/attempts.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            }).then(function(res){ return res.json(); }).then(function(json){
+                if (json && json.success) {
+                    showToast('success','Exam submitted — score: ' + payload.score);
+                    prevBtn.disabled = true; nextBtn.disabled = true; submitBtn.disabled = true;
+                } else {
+                    showToast('error',(json && json.error) ? json.error : 'Submission failed');
+                }
+            }).catch(function(err){ showToast('error', err.message || 'Request failed'); });
+        });
+
+        // initialize
+        if (!questions || !questions.length) {
+            showToast('error','No questions available for this subject');
+            if (startBtn) startBtn.disabled = true;
+        }
+
+        startBtn && startBtn.addEventListener('click', function() {
+            if (!questions || !questions.length) return;
+            prepareExam();
+            current = 0; answers = {};
+            if (examContainerEl) examContainerEl.style.display = '';
+            startBtn.disabled = true;
+            startTimer();
+            renderQuestion(current);
+        });
     });
     </script>
     <!--! ================================================================ !-->

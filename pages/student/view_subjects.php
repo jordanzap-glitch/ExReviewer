@@ -148,8 +148,8 @@ if (isset($conn)) {
                                 <div class="card-body d-flex flex-column">
                                     <h5 class="card-title mb-3"><?php echo htmlspecialchars($sub['name']); ?></h5>
                                     <div class="mt-auto d-flex gap-2">
-                                        <a href="view_modules.php?subject_id=<?php echo (int)$sub['id']; ?>" class="btn btn-outline-primary">View Modules</a>
-                                        <a href="take_exam.php?subject_id=<?php echo (int)$sub['id']; ?>" class="btn btn-primary">Take Exam</a>
+                                        <a href="view_modules.php?subjects_id=<?php echo (int)$sub['id']; ?>" class="btn btn-outline-primary">View Modules</a>
+                                        <a href="take_exam.php?subjects_id=<?php echo (int)$sub['id']; ?>" class="btn btn-primary">Take Exam</a>
                                     </div>
                                 </div>
                             </div>
