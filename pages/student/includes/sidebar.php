@@ -24,10 +24,11 @@
                     <li class="nxl-item nxl-hasmenu">
                         <a href="javascript:void(0);" class="nxl-link">
                             <span class="nxl-micon"><i class="feather-file-text"></i></span>
-                            <span class="nxl-mtext">Exam</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+                            <span class="nxl-mtext">Modules/Exam</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                         </a>
                         <ul class="nxl-submenu">
                             <li class="nxl-item"><a class="nxl-link" href="take_exam.php">Take Exam</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="view_subjects.php">Modules</a></li>
                         </ul>
                     </li>
                 </ul>
