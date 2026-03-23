@@ -12,18 +12,39 @@ if (isset($conn) && $subjects_id > 0) {
     try {
         $rows = [];
         if ($conn instanceof PDO) {
-            $sstmt = $conn->prepare("SELECT name FROM tbl_subjects WHERE id = :id LIMIT 1");
+            // detect if exam_duration column exists
+            $hasDuration = false;
+            try {
+                $chk = $conn->query("SHOW COLUMNS FROM tbl_subjects LIKE 'exam_duration'");
+                if ($chk && $chk->fetch()) $hasDuration = true;
+            } catch (Exception $e) { $hasDuration = false; }
+
+            if ($hasDuration) {
+                $sstmt = $conn->prepare("SELECT name, exam_duration FROM tbl_subjects WHERE id = :id LIMIT 1");
+            } else {
+                $sstmt = $conn->prepare("SELECT name FROM tbl_subjects WHERE id = :id LIMIT 1");
+            }
             $sstmt->execute([':id' => $subjects_id]);
             $s = $sstmt->fetch(PDO::FETCH_ASSOC);
             $subject_name = $s['name'] ?? '';
+            $exam_duration = ($hasDuration && isset($s['exam_duration'])) ? (int)$s['exam_duration'] : null;
 
             $qstmt = $conn->prepare("SELECT id, question, opt_a, opt_b, opt_c, opt_d, correct_ans, subjects_id, remarks FROM tbl_question_bank WHERE subjects_id = :id ORDER BY id ASC");
             $qstmt->execute([':id' => $subjects_id]);
             $rows = $qstmt->fetchAll(PDO::FETCH_ASSOC);
         } elseif ($conn instanceof mysqli) {
             $sid = (int)$subjects_id;
-            $sres = $conn->query("SELECT name FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
-            if ($sres) { $r = $sres->fetch_assoc(); $subject_name = $r['name'] ?? ''; }
+            // detect exam_duration column
+            $hasDuration = false;
+            $chk = $conn->query("SHOW COLUMNS FROM `tbl_subjects` LIKE 'exam_duration'");
+            if ($chk && $chk->num_rows > 0) $hasDuration = true;
+            if ($hasDuration) {
+                $sres = $conn->query("SELECT name, exam_duration FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
+                if ($sres) { $r = $sres->fetch_assoc(); $subject_name = $r['name'] ?? ''; $exam_duration = isset($r['exam_duration']) ? (int)$r['exam_duration'] : null; }
+            } else {
+                $sres = $conn->query("SELECT name FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
+                if ($sres) { $r = $sres->fetch_assoc(); $subject_name = $r['name'] ?? ''; }
+            }
             $qres = $conn->query("SELECT id, question, opt_a, opt_b, opt_c, opt_d, correct_ans, subjects_id, remarks FROM tbl_question_bank WHERE subjects_id = {$sid} ORDER BY id ASC");
             if ($qres) { while ($row = $qres->fetch_assoc()) $rows[] = $row; }
         } else {
@@ -68,6 +89,13 @@ if (isset($conn) && $subjects_id > 0) {
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
     <?php include "includes/css_scripts_head.php"; ?>
+    <style>
+    /* Ensure nav vertical line sits behind the circular nav buttons */
+    #questionNav { position: relative; }
+    .nav-line { z-index: 1; }
+    #questionNav .qn-nav-btn { position: relative; z-index: 2; background: #fff; }
+    #questionNav span { position: relative; z-index: 1; }
+    </style>
     <!-- DataTables CSS (CDN) -->
     <!--! END: Custom CSS-->
     <!-- DataTables CSS -->
@@ -169,15 +197,15 @@ if (isset($conn) && $subjects_id > 0) {
             <!-- [ Main Content ] start -->
             <div class="main-content">
                 <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card stretch stretch-full">
+                    <div class="col-lg-9">
+                        <div class="card h-100">
                             <div class="card-header bg-soft-info border-soft-info text-info d-flex align-items-center justify-content-between">
-                                    <h5 class="card-title mb-0">Take Exam</h5>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span id="timerDisplay" class="badge bg-primary">15:00</span>
-                                        <button id="startExamBtn" class="btn btn-outline-primary btn-sm">Take Exam</button>
-                                    </div>
+                                <h5 class="card-title mb-0">Take Exam</h5>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span id="timerDisplay" class="badge bg-primary">00:00</span>
+                                    <button id="startExamBtn" class="btn btn-outline-primary btn-sm">Take Exam</button>
                                 </div>
+                            </div>
                             <div class="card-body p-0">
                                 <div class="p-3">
                                     <div id="examContainer" style="display:none">
@@ -188,11 +216,22 @@ if (isset($conn) && $subjects_id > 0) {
                                             <button id="prevBtn" class="btn btn-secondary btn-sm">Previous</button>
                                             <div>
                                                 <button id="nextBtn" class="btn btn-primary btn-sm me-2">Next</button>
-                                                <button id="submitBtn" class="btn btn-success btn-sm">Submit</button>
+                                                <button id="submitBtn" class="btn btn-success btn-sm" style="display:none">Submit</button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-soft-secondary border-soft-secondary text-secondary">
+                                <h6 class="card-title mb-0">Question Navigation</h6>
+                            </div>
+                            <div class="card-body" style="padding:0.75rem; position:relative;">
+                                <div class="nav-line" style="position:absolute; left:50%; top:12px; bottom:12px; width:2px; background:#e9ecef; transform:translateX(-50%);"></div>
+                                <div id="questionNav" class="d-flex align-items-center flex-column" style="height:100%; overflow-y:auto; gap:6px; padding:6px;"></div>
                             </div>
                         </div>
                     </div>
@@ -268,6 +307,7 @@ if (isset($conn) && $subjects_id > 0) {
     // embed server-provided questions and subject for client-side use
     var questions = <?php echo json_encode($questions, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?> || [];
     var examSubject = <?php echo json_encode($subject_name, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?> || '';
+    var examDurationMinutes = <?php echo isset($exam_duration) && $exam_duration !== null ? (int)$exam_duration : 15; ?>;
 
     function showToast(type, message, delay) {
         delay = delay || 3000;
@@ -294,7 +334,7 @@ if (isset($conn) && $subjects_id > 0) {
     document.addEventListener('DOMContentLoaded', function () {
         var current = 0;
         var answers = {};
-        var examDuration = 15 * 60; // seconds
+        var examDuration = (parseInt(examDurationMinutes, 10) || 15) * 60; // seconds
         var examTimer = null;
         var examRemaining = 0; // seconds left (kept outside timer so submit can stop it)
 
@@ -307,6 +347,91 @@ if (isset($conn) && $subjects_id > 0) {
         var prevBtn = document.getElementById('prevBtn');
         var nextBtn = document.getElementById('nextBtn');
         var submitBtn = document.getElementById('submitBtn');
+        var questionNav = document.getElementById('questionNav');
+
+        function buildNavButtonLabel(i) {
+            return (i + 1).toString();
+        }
+
+            function handleNextClick() {
+                // if on last question, treat Next as Submit
+                if (current === questions.length - 1) {
+                    saveCurrentAnswer();
+                    submitExam(false);
+                    return;
+                }
+                saveCurrentAnswer();
+                if (current < questions.length - 1) { current++; renderQuestion(current); }
+            }
+            nextBtn.addEventListener('click', handleNextClick);
+
+            function renderNav() {
+                if (!questionNav) return;
+                questionNav.innerHTML = '';
+                for (var i = 0; i < questions.length; i++) {
+                    (function(i){
+                        var q = questions[i];
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'qn-nav-btn btn btn-sm';
+                        btn.setAttribute('data-index', i);
+                        btn.style.borderRadius = '50%';
+                        btn.style.width = '36px';
+                        btn.style.height = '36px';
+                        btn.style.padding = '0';
+                        btn.style.display = 'flex';
+                        btn.style.alignItems = 'center';
+                        btn.style.justifyContent = 'center';
+                        btn.style.margin = '4px';
+                        btn.style.border = '1px solid #ced4da';
+                        btn.style.background = '#fff';
+                        btn.textContent = buildNavButtonLabel(i);
+                        var isVertical = questionNav.classList.contains('flex-column') || questionNav.classList.contains('align-items-center');
+                        if (answers[q.id]) {
+                            btn.classList.add('btn-success');
+                            btn.style.color = '#fff';
+                        } else {
+                            btn.classList.add('btn-outline-secondary');
+                        }
+                        if (i === current) {
+                            btn.style.boxShadow = '0 0 0 3px rgba(13,110,253,0.12)';
+                        }
+                        if (isVertical) {
+                            btn.style.width = '40px';
+                            btn.style.height = '40px';
+                            btn.style.margin = '4px 0';
+                        } else {
+                            btn.style.width = '36px';
+                            btn.style.height = '36px';
+                            btn.style.margin = '4px';
+                        }
+                        btn.addEventListener('click', function(){
+                            saveCurrentAnswer();
+                            current = i;
+                            renderQuestion(current);
+                        });
+                        questionNav.appendChild(btn);
+                        if (i < questions.length - 1) {
+                            var span = document.createElement('span');
+                            if (isVertical) {
+                                span.style.display = 'block';
+                                span.style.width = '2px';
+                                span.style.height = '12px';
+                                span.style.background = '#e9ecef';
+                                span.style.margin = '4px auto';
+                            } else {
+                                span.style.display = 'inline-block';
+                                span.style.width = '28px';
+                                span.style.height = '2px';
+                                span.style.background = '#e9ecef';
+                                span.style.margin = '0 6px';
+                                span.style.alignSelf = 'center';
+                            }
+                            questionNav.appendChild(span);
+                        }
+                    })(i);
+                }
+            }
 
         function formatTime(seconds) { var m = Math.floor(seconds/60); var s = seconds%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
 
@@ -320,7 +445,7 @@ if (isset($conn) && $subjects_id > 0) {
                     clearInterval(examTimer);
                     examTimer = null;
                     showToast('error','Time is up — submitting exam');
-                    submitBtn.click();
+                    submitExam(true);
                 }
             }, 1000);
         }
@@ -336,6 +461,8 @@ if (isset($conn) && $subjects_id > 0) {
                 for (var k in ansObj) { arr.push({ key: k, text: ansObj[k] || '' }); }
                 q.shuffledAnswers = shuffleArray(arr);
             }
+            // build navigation UI (round buttons + lines)
+            try { renderNav(); } catch (e) {}
         }
 
         function renderQuestion(index) {
@@ -360,7 +487,19 @@ if (isset($conn) && $subjects_id > 0) {
                 if (sel) sel.checked = true;
             }
             prevBtn.disabled = (index === 0);
-            nextBtn.disabled = (index === questions.length - 1);
+            // keep Next enabled even on last question (it becomes Submit)
+            nextBtn.disabled = false;
+            // On last question: hide the separate submit button and turn Next into Submit
+            try {
+                if (index === questions.length - 1) {
+                    if (submitBtn) submitBtn.style.display = 'none';
+                    if (nextBtn) nextBtn.textContent = 'Submit';
+                } else {
+                    if (submitBtn) submitBtn.style.display = 'none';
+                    if (nextBtn) nextBtn.textContent = 'Next';
+                }
+            } catch (e) {}
+            try { renderNav(); } catch (e) {}
         }
 
         function saveCurrentAnswer() {
@@ -372,12 +511,18 @@ if (isset($conn) && $subjects_id > 0) {
         }
 
         prevBtn.addEventListener('click', function(){ saveCurrentAnswer(); if (current > 0) { current--; renderQuestion(current); } });
-        nextBtn.addEventListener('click', function(){ if (!saveCurrentAnswer()) { showToast('error','Please select an answer before continuing'); return; } if (current < questions.length - 1) { current++; renderQuestion(current); } });
 
-        submitBtn.addEventListener('click', function(){
-            if (!saveCurrentAnswer()) { showToast('error','Please select an answer before submitting'); return; }
-            for (var i = 0; i < questions.length; i++) { if (!answers[questions[i].id]) { showToast('error','Please answer all questions'); return; } }
-            // compute score
+        function submitExam(force) {
+            force = !!force;
+            // Save current answer if possible
+            saveCurrentAnswer();
+
+            // If not forcing, ensure all answered
+            if (!force) {
+                for (var i = 0; i < questions.length; i++) { if (!answers[questions[i].id]) { showToast('error','Please answer all questions'); return; } }
+            }
+
+            // compute score (treat unanswered as incorrect)
             var correct = 0;
             for (var i = 0; i < questions.length; i++) {
                 var q = questions[i];
@@ -392,6 +537,18 @@ if (isset($conn) && $subjects_id > 0) {
 
             // stop the timer immediately upon submission
             if (examTimer) { clearInterval(examTimer); examTimer = null; }
+
+            // disable UI to prevent further changes
+            try {
+                if (prevBtn) prevBtn.disabled = true;
+                if (nextBtn) nextBtn.disabled = true;
+                if (submitBtn) submitBtn.disabled = true;
+                // disable all option inputs
+                document.querySelectorAll('input[name="examOption"]').forEach(function(i){ i.disabled = true; });
+                // disable nav buttons
+                document.querySelectorAll('.qn-nav-btn').forEach(function(b){ b.disabled = true; });
+            } catch (e) { /* ignore */ }
+
             fetch('functions/attempts.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -400,12 +557,14 @@ if (isset($conn) && $subjects_id > 0) {
             }).then(function(res){ return res.json(); }).then(function(json){
                 if (json && json.success) {
                     showToast('success','Exam submitted — score: ' + payload.score);
-                    prevBtn.disabled = true; nextBtn.disabled = true; submitBtn.disabled = true;
                 } else {
                     showToast('error',(json && json.error) ? json.error : 'Submission failed');
                 }
             }).catch(function(err){ showToast('error', err.message || 'Request failed'); });
-        });
+        }
+
+        // wire submit button to normal (non-forced) submit
+        submitBtn.addEventListener('click', function(){ submitExam(false); });
 
         // initialize
         if (!questions || !questions.length) {
