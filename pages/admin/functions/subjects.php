@@ -21,7 +21,7 @@ function table_has_column($conn, $table, $column)
     return false;
 }
 
-function add_subject($conn, $name, $code, $exam_duration = null)
+function add_subject($conn, $name, $code, $exam_duration = null, $question_items = null)
 {
     $name = trim($name ?? '');
     $code = trim($code ?? '');
@@ -41,13 +41,24 @@ function add_subject($conn, $name, $code, $exam_duration = null)
         }
     }
 
-    // include exam_duration if column exists
+    // include exam_duration and/or question_items if columns exist
     $hasDuration = table_has_column($conn, 'tbl_subjects', 'exam_duration');
-    if ($hasDuration) {
+    $hasItems = table_has_column($conn, 'tbl_subjects', 'question_items');
+    if ($hasDuration && $hasItems) {
+        $sql = "INSERT INTO tbl_subjects (`name`, `code`, `exam_duration`, `question_items`) VALUES (?, ?, ?, ?)";
+        $stmt = mysqli_prepare($conn, $sql);
+        if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
+        mysqli_stmt_bind_param($stmt, 'ssii', $name, $code, $exam_duration, $question_items);
+    } elseif ($hasDuration) {
         $sql = "INSERT INTO tbl_subjects (`name`, `code`, `exam_duration`) VALUES (?, ?, ?)";
         $stmt = mysqli_prepare($conn, $sql);
         if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
         mysqli_stmt_bind_param($stmt, 'ssi', $name, $code, $exam_duration);
+    } elseif ($hasItems) {
+        $sql = "INSERT INTO tbl_subjects (`name`, `code`, `question_items`) VALUES (?, ?, ?)";
+        $stmt = mysqli_prepare($conn, $sql);
+        if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
+        mysqli_stmt_bind_param($stmt, 'ssi', $name, $code, $question_items);
     } else {
         $sql = "INSERT INTO tbl_subjects (`name`, `code`) VALUES (?, ?)";
         $stmt = mysqli_prepare($conn, $sql);
@@ -71,8 +82,13 @@ function add_subject($conn, $name, $code, $exam_duration = null)
 function get_subjects($conn)
 {
     $hasDuration = table_has_column($conn, 'tbl_subjects', 'exam_duration');
-    if ($hasDuration) {
+    $hasItems = table_has_column($conn, 'tbl_subjects', 'question_items');
+    if ($hasDuration && $hasItems) {
+        $sql = "SELECT id, `name`, `code`, exam_duration, question_items FROM tbl_subjects ORDER BY `name` ASC";
+    } elseif ($hasDuration) {
         $sql = "SELECT id, `name`, `code`, exam_duration FROM tbl_subjects ORDER BY `name` ASC";
+    } elseif ($hasItems) {
+        $sql = "SELECT id, `name`, `code`, question_items FROM tbl_subjects ORDER BY `name` ASC";
     } else {
         $sql = "SELECT id, `name`, `code` FROM tbl_subjects ORDER BY `name` ASC";
     }
@@ -98,8 +114,13 @@ function get_subject($conn, $id)
     $id = (int)$id;
     if ($id <= 0) return ['success' => false, 'error' => 'Invalid id'];
     $hasDuration = table_has_column($conn, 'tbl_subjects', 'exam_duration');
-    if ($hasDuration) {
+    $hasItems = table_has_column($conn, 'tbl_subjects', 'question_items');
+    if ($hasDuration && $hasItems) {
+        $sql = "SELECT id, `name`, `code`, exam_duration, question_items FROM tbl_subjects WHERE id = ? LIMIT 1";
+    } elseif ($hasDuration) {
         $sql = "SELECT id, `name`, `code`, exam_duration FROM tbl_subjects WHERE id = ? LIMIT 1";
+    } elseif ($hasItems) {
+        $sql = "SELECT id, `name`, `code`, question_items FROM tbl_subjects WHERE id = ? LIMIT 1";
     } else {
         $sql = "SELECT id, `name`, `code` FROM tbl_subjects WHERE id = ? LIMIT 1";
     }
@@ -112,6 +133,7 @@ function get_subject($conn, $id)
     if (!$row) return ['success' => false, 'error' => 'Subject not found.'];
     $data = ['id' => (int)$row['id'], 'name' => $row['name'], 'code' => $row['code']];
     if ($hasDuration && isset($row['exam_duration'])) $data['exam_duration'] = (int)$row['exam_duration'];
+    if ($hasItems && isset($row['question_items'])) $data['question_items'] = (int)$row['question_items'];
     return ['success' => true, 'data' => $data];
 }
 
@@ -125,7 +147,7 @@ function get_subject($conn, $id)
  * @param string $code
  * @return array ['success'=>bool, 'error'=>string|null]
  */
-function update_subject($conn, $id, $name, $code, $exam_duration = null)
+function update_subject($conn, $id, $name, $code, $exam_duration = null, $question_items = null)
 {
     $id = (int)$id;
     $name = trim($name ?? '');
@@ -146,11 +168,22 @@ function update_subject($conn, $id, $name, $code, $exam_duration = null)
     }
 
     $hasDuration = table_has_column($conn, 'tbl_subjects', 'exam_duration');
-    if ($hasDuration) {
+    $hasItems = table_has_column($conn, 'tbl_subjects', 'question_items');
+    if ($hasDuration && $hasItems) {
+        $sql = "UPDATE tbl_subjects SET `name` = ?, `code` = ?, exam_duration = ?, question_items = ? WHERE id = ?";
+        $stmt = mysqli_prepare($conn, $sql);
+        if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
+        mysqli_stmt_bind_param($stmt, 'ssiii', $name, $code, $exam_duration, $question_items, $id);
+    } elseif ($hasDuration) {
         $sql = "UPDATE tbl_subjects SET `name` = ?, `code` = ?, exam_duration = ? WHERE id = ?";
         $stmt = mysqli_prepare($conn, $sql);
         if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
         mysqli_stmt_bind_param($stmt, 'ssii', $name, $code, $exam_duration, $id);
+    } elseif ($hasItems) {
+        $sql = "UPDATE tbl_subjects SET `name` = ?, `code` = ?, question_items = ? WHERE id = ?";
+        $stmt = mysqli_prepare($conn, $sql);
+        if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];
+        mysqli_stmt_bind_param($stmt, 'ssii', $name, $code, $question_items, $id);
     } else {
         $sql = "UPDATE tbl_subjects SET `name` = ?, `code` = ? WHERE id = ?";
         $stmt = mysqli_prepare($conn, $sql);
@@ -222,10 +255,11 @@ if (php_sapi_name() !== 'cli') {
             $name = $_POST['subject_name'] ?? ($_POST['name'] ?? '');
             $code = $_POST['subject_code'] ?? ($_POST['code'] ?? '');
             $exam_duration = isset($_POST['exam_duration']) && $_POST['exam_duration'] !== '' ? (int)$_POST['exam_duration'] : null;
-            $res = add_subject($conn, $name, $code, $exam_duration);
+            $question_items = isset($_POST['question_items']) && $_POST['question_items'] !== '' ? (int)$_POST['question_items'] : null;
+            $res = add_subject($conn, $name, $code, $exam_duration, $question_items);
             if (!empty($res['success']) && !empty($res['id'])) {
                 // return created subject data
-                echo json_encode(['success' => true, 'id' => (int)$res['id'], 'data' => ['id' => (int)$res['id'], 'name' => $name, 'code' => $code, 'exam_duration' => $exam_duration]]);
+                echo json_encode(['success' => true, 'id' => (int)$res['id'], 'data' => ['id' => (int)$res['id'], 'name' => $name, 'code' => $code, 'exam_duration' => $exam_duration, 'question_items' => $question_items]]);
                 exit;
             }
             echo json_encode($res);
@@ -237,7 +271,8 @@ if (php_sapi_name() !== 'cli') {
             $name = $_POST['name'] ?? '';
             $code = $_POST['code'] ?? '';
             $exam_duration = isset($_POST['exam_duration']) && $_POST['exam_duration'] !== '' ? (int)$_POST['exam_duration'] : null;
-            $res = update_subject($conn, $id, $name, $code, $exam_duration);
+            $question_items = isset($_POST['question_items']) && $_POST['question_items'] !== '' ? (int)$_POST['question_items'] : null;
+            $res = update_subject($conn, $id, $name, $code, $exam_duration, $question_items);
             echo json_encode($res);
             exit;
         }

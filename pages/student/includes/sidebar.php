@@ -27,8 +27,7 @@
                             <span class="nxl-mtext">Modules/Exam</span><span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
                         </a>
                         <ul class="nxl-submenu">
-                            <li class="nxl-item"><a class="nxl-link" href="take_exam.php">Take Exam</a></li>
-                            <li class="nxl-item"><a class="nxl-link" href="view_subjects.php">Modules</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="view_subjects.php">Modules/Exams</a></li>
                         </ul>
                     </li>
                 </ul>

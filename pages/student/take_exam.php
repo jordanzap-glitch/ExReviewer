@@ -12,35 +12,48 @@ if (isset($conn) && $subjects_id > 0) {
     try {
         $rows = [];
         if ($conn instanceof PDO) {
-            // detect if exam_duration column exists
+            // detect if exam_duration and question_items columns exist
             $hasDuration = false;
+            $hasItems = false;
             try {
                 $chk = $conn->query("SHOW COLUMNS FROM tbl_subjects LIKE 'exam_duration'");
                 if ($chk && $chk->fetch()) $hasDuration = true;
             } catch (Exception $e) { $hasDuration = false; }
+            try {
+                $chk2 = $conn->query("SHOW COLUMNS FROM tbl_subjects LIKE 'question_items'");
+                if ($chk2 && $chk2->fetch()) $hasItems = true;
+            } catch (Exception $e) { $hasItems = false; }
 
-            if ($hasDuration) {
-                $sstmt = $conn->prepare("SELECT name, exam_duration FROM tbl_subjects WHERE id = :id LIMIT 1");
-            } else {
-                $sstmt = $conn->prepare("SELECT name FROM tbl_subjects WHERE id = :id LIMIT 1");
-            }
+            $fields = ['name'];
+            if ($hasDuration) $fields[] = 'exam_duration';
+            if ($hasItems) $fields[] = 'question_items';
+            $sstmt = $conn->prepare("SELECT " . implode(', ', $fields) . " FROM tbl_subjects WHERE id = :id LIMIT 1");
             $sstmt->execute([':id' => $subjects_id]);
             $s = $sstmt->fetch(PDO::FETCH_ASSOC);
             $subject_name = $s['name'] ?? '';
             $exam_duration = ($hasDuration && isset($s['exam_duration'])) ? (int)$s['exam_duration'] : null;
+            $question_items = ($hasItems && isset($s['question_items'])) ? (int)$s['question_items'] : null;
 
             $qstmt = $conn->prepare("SELECT id, question, opt_a, opt_b, opt_c, opt_d, correct_ans, subjects_id, remarks FROM tbl_question_bank WHERE subjects_id = :id ORDER BY id ASC");
             $qstmt->execute([':id' => $subjects_id]);
             $rows = $qstmt->fetchAll(PDO::FETCH_ASSOC);
         } elseif ($conn instanceof mysqli) {
             $sid = (int)$subjects_id;
-            // detect exam_duration column
-            $hasDuration = false;
+            // detect exam_duration and question_items columns
+            $hasDuration = false; $hasItems = false;
             $chk = $conn->query("SHOW COLUMNS FROM `tbl_subjects` LIKE 'exam_duration'");
             if ($chk && $chk->num_rows > 0) $hasDuration = true;
-            if ($hasDuration) {
+            $chk2 = $conn->query("SHOW COLUMNS FROM `tbl_subjects` LIKE 'question_items'");
+            if ($chk2 && $chk2->num_rows > 0) $hasItems = true;
+            if ($hasDuration && $hasItems) {
+                $sres = $conn->query("SELECT name, exam_duration, question_items FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
+                if ($sres) { $r = $sres->fetch_assoc(); $subject_name = $r['name'] ?? ''; $exam_duration = isset($r['exam_duration']) ? (int)$r['exam_duration'] : null; $question_items = isset($r['question_items']) ? (int)$r['question_items'] : null; }
+            } elseif ($hasDuration) {
                 $sres = $conn->query("SELECT name, exam_duration FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
                 if ($sres) { $r = $sres->fetch_assoc(); $subject_name = $r['name'] ?? ''; $exam_duration = isset($r['exam_duration']) ? (int)$r['exam_duration'] : null; }
+            } elseif ($hasItems) {
+                $sres = $conn->query("SELECT name, question_items FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
+                if ($sres) { $r = $sres->fetch_assoc(); $subject_name = $r['name'] ?? ''; $question_items = isset($r['question_items']) ? (int)$r['question_items'] : null; }
             } else {
                 $sres = $conn->query("SELECT name FROM tbl_subjects WHERE id = {$sid} LIMIT 1");
                 if ($sres) { $r = $sres->fetch_assoc(); $subject_name = $r['name'] ?? ''; }
@@ -146,44 +159,9 @@ if (isset($conn) && $subjects_id > 0) {
                                 <span>Back</span>
                             </a>
                         </div>
-                        <div class="d-flex align-items-center gap-2 page-header-right-items-wrapper">
-                            <div class="dropdown">
-                                <a class="btn btn-icon btn-light-brand" data-bs-toggle="dropdown" data-bs-offset="0, 10" data-bs-auto-close="outside">
-                                    <i class="feather-paperclip"></i>
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-end">
-                                    <a href="javascript:void(0);" class="dropdown-item">
-                                        <i class="bi bi-filetype-pdf me-3"></i>
-                                        <span>PDF</span>
-                                    </a>
-                                    <a href="javascript:void(0);" class="dropdown-item">
-                                        <i class="bi bi-filetype-csv me-3"></i>
-                                        <span>CSV</span>
-                                    </a>
-                                    <a href="javascript:void(0);" class="dropdown-item">
-                                        <i class="bi bi-filetype-xml me-3"></i>
-                                        <span>XML</span>
-                                    </a>
-                                    <a href="javascript:void(0);" class="dropdown-item">
-                                        <i class="bi bi-filetype-txt me-3"></i>
-                                        <span>Text</span>
-                                    </a>
-                                    <a href="javascript:void(0);" class="dropdown-item">
-                                        <i class="bi bi-filetype-exe me-3"></i>
-                                        <span>Excel</span>
-                                    </a>
-                                    <div class="dropdown-divider"></div>
-                                    <a href="javascript:void(0);" class="dropdown-item">
-                                        <i class="bi bi-printer me-3"></i>
-                                        <span>Print</span>
-                                    </a>
-                                </div>
+                            <div class="d-flex align-items-center gap-2 page-header-right-items-wrapper">
+                                <!-- Export dropdown and Save button removed for student view -->
                             </div>
-                            <button id="saveExamBtn" type="button" class="btn btn-primary">
-                                <i class="feather-save me-2"></i>
-                                <span>Save</span>
-                            </button>
-                        </div>
                     </div>
                     <div class="d-md-none d-flex align-items-center">
                         <a href="javascript:void(0)" class="page-header-right-open-toggle">
@@ -200,7 +178,11 @@ if (isset($conn) && $subjects_id > 0) {
                     <div class="col-lg-9">
                         <div class="card h-100">
                             <div class="card-header bg-soft-info border-soft-info text-info d-flex align-items-center justify-content-between">
-                                <h5 class="card-title mb-0">Take Exam</h5>
+                                <h5 class="card-title mb-0">Take Exam
+                                    <?php if (!empty($subject_name)): ?>
+                                        &mdash; <span class="text-primary"><?php echo htmlspecialchars($subject_name); ?></span>
+                                    <?php endif; ?>
+                                </h5>
                                 <div class="d-flex align-items-center gap-2">
                                     <span id="timerDisplay" class="badge bg-primary">00:00</span>
                                     <button id="startExamBtn" class="btn btn-outline-primary btn-sm">Take Exam</button>
@@ -308,6 +290,7 @@ if (isset($conn) && $subjects_id > 0) {
     var questions = <?php echo json_encode($questions, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?> || [];
     var examSubject = <?php echo json_encode($subject_name, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP); ?> || '';
     var examDurationMinutes = <?php echo isset($exam_duration) && $exam_duration !== null ? (int)$exam_duration : 15; ?>;
+    var examQuestionItems = <?php echo isset($question_items) && $question_items !== null ? (int)$question_items : 'null'; ?>;
 
     function showToast(type, message, delay) {
         delay = delay || 3000;
@@ -453,6 +436,13 @@ if (isset($conn) && $subjects_id > 0) {
         function prepareExam() {
             // shuffle questions
             shuffleArray(questions);
+            // limit questions by subject's question_items if provided (shuffle then slice to get random subset)
+            try {
+                var items = parseInt(examQuestionItems, 10);
+                if (!isNaN(items) && items > 0 && items < questions.length) {
+                    questions = questions.slice(0, items);
+                }
+            } catch (e) {}
             // for each question, prepare shuffled answers array
             for (var i = 0; i < questions.length; i++) {
                 var q = questions[i];
@@ -489,14 +479,19 @@ if (isset($conn) && $subjects_id > 0) {
             prevBtn.disabled = (index === 0);
             // keep Next enabled even on last question (it becomes Submit)
             nextBtn.disabled = false;
-            // On last question: hide the separate submit button and turn Next into Submit
+            // If only one question, show Submit and hide Next. Otherwise, on last question make Next behave as Submit.
             try {
-                if (index === questions.length - 1) {
-                    if (submitBtn) submitBtn.style.display = 'none';
-                    if (nextBtn) nextBtn.textContent = 'Submit';
+                if (questions.length === 1) {
+                    if (submitBtn) submitBtn.style.display = '';
+                    if (nextBtn) nextBtn.style.display = 'none';
                 } else {
-                    if (submitBtn) submitBtn.style.display = 'none';
-                    if (nextBtn) nextBtn.textContent = 'Next';
+                    if (index === questions.length - 1) {
+                        if (submitBtn) submitBtn.style.display = 'none';
+                        if (nextBtn) { nextBtn.style.display = ''; nextBtn.textContent = 'Submit'; }
+                    } else {
+                        if (submitBtn) submitBtn.style.display = 'none';
+                        if (nextBtn) { nextBtn.style.display = ''; nextBtn.textContent = 'Next'; }
+                    }
                 }
             } catch (e) {}
             try { renderNav(); } catch (e) {}

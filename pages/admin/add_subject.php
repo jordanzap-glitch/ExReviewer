@@ -17,7 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_subject'])) {
     $name = $_POST['subject_name'] ?? '';
     $code = $_POST['subject_code'] ?? '';
     $exam_duration = isset($_POST['exam_duration']) && $_POST['exam_duration'] !== '' ? (int)$_POST['exam_duration'] : null;
-    $res = add_subject($conn, $name, $code, $exam_duration);
+    $question_items = isset($_POST['question_items']) && $_POST['question_items'] !== '' ? (int)$_POST['question_items'] : null;
+    $res = add_subject($conn, $name, $code, $exam_duration, $question_items);
     if ($res['success']) {
         $_SESSION['subject_msg'] = ['type' => 'success', 'text' => 'Subject added successfully.'];
     } else {
@@ -166,6 +167,7 @@ if (!empty($_SESSION['subject_msg'])) {
                                                 <th>Subject</th>
                                                 <th>Code</th>
                                                 <th>Duration (min)</th>
+                                                <th>Items</th>
                                                 <th>Action</th>
                                             </tr>
                                         </thead>
@@ -176,10 +178,11 @@ if (!empty($_SESSION['subject_msg'])) {
                                                 foreach ($subjects as $sub) {
                                                     ?>
                                                     <tr>
-                                                        <td><?php echo htmlspecialchars($sub['name']); ?></td>
-                                                        <td><?php echo htmlspecialchars($sub['code']); ?></td>
-                                                        <td><?php echo isset($sub['exam_duration']) ? (int)$sub['exam_duration'] : ''; ?></td>
-                                                        <td>
+                                                                <td><?php echo htmlspecialchars($sub['name']); ?></td>
+                                                                <td><?php echo htmlspecialchars($sub['code']); ?></td>
+                                                                <td><?php echo isset($sub['exam_duration']) ? (int)$sub['exam_duration'] : ''; ?></td>
+                                                                <td><?php echo isset($sub['question_items']) ? (int)$sub['question_items'] : ''; ?></td>
+                                                                <td>
                                                             <a href="#" class="btn-view-subject text-primary me-2 fs-5" data-id="<?php echo (int)$sub['id']; ?>" title="View">
                                                                 <i class="feather-eye"></i>
                                                             </a>
@@ -194,7 +197,7 @@ if (!empty($_SESSION['subject_msg'])) {
                                                     <?php
                                                 }
                                             } else {
-                                                echo '<tr><td colspan="3">No subjects found.</td></tr>';
+                                                echo '<tr><td colspan="4">No subjects found.</td></tr>';
                                             }
                                             ?>
                                         </tbody>
@@ -307,6 +310,7 @@ if (!empty($_SESSION['subject_msg'])) {
                     <p><strong>Name:</strong> <span id="viewSubjectName"></span></p>
                     <p><strong>Code:</strong> <span id="viewSubjectCode"></span></p>
                     <p><strong>Duration (min):</strong> <span id="viewSubjectDuration"></span></p>
+                    <p><strong>Items:</strong> <span id="viewSubjectItems"></span></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -334,6 +338,10 @@ if (!empty($_SESSION['subject_msg'])) {
                     <div class="mb-3">
                         <label for="edit_subject_duration" class="form-label">Exam Duration (minutes)</label>
                         <input type="number" id="edit_subject_duration" name="exam_duration" class="form-control" min="0" placeholder="e.g. 30">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_subject_items" class="form-label">Question Items</label>
+                        <input type="number" id="edit_subject_items" name="question_items" class="form-control" min="0" placeholder="e.g. 50">
                     </div>
                     <input type="hidden" id="edit_subject_id" name="id" value="">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
@@ -386,6 +394,7 @@ if (!empty($_SESSION['subject_msg'])) {
                             document.getElementById('viewSubjectName').textContent = resp.data.name;
                             document.getElementById('viewSubjectCode').textContent = resp.data.code;
                             document.getElementById('viewSubjectDuration').textContent = resp.data.exam_duration !== undefined ? resp.data.exam_duration : '';
+                            document.getElementById('viewSubjectItems').textContent = resp.data.question_items !== undefined ? resp.data.question_items : '';
                             var m = new bootstrap.Modal(document.getElementById('viewSubjectModal'));
                             m.show();
                         } else {
@@ -407,6 +416,7 @@ if (!empty($_SESSION['subject_msg'])) {
                             document.getElementById('edit_subject_name').value = resp.data.name;
                             document.getElementById('edit_subject_code').value = resp.data.code;
                             document.getElementById('edit_subject_duration').value = resp.data.exam_duration !== undefined ? resp.data.exam_duration : '';
+                            document.getElementById('edit_subject_items').value = resp.data.question_items !== undefined ? resp.data.question_items : '';
                             document.getElementById('edit_subject_id').value = resp.data.id;
                             var m = new bootstrap.Modal(document.getElementById('editSubjectModal'));
                             m.show();
@@ -436,11 +446,13 @@ if (!empty($_SESSION['subject_msg'])) {
                                 var tr = rowBtn.closest('tr');
                                 if (tr) {
                                     var tds = tr.querySelectorAll('td');
-                                    if (tds && tds.length >= 3) {
+                                    if (tds && tds.length >= 4) {
                                         tds[0].textContent = fd.get('name') || fd.get('subject_name') || document.getElementById('edit_subject_name').value;
                                         tds[1].textContent = fd.get('code') || fd.get('subject_code') || document.getElementById('edit_subject_code').value;
                                         // duration may be present as exam_duration
                                         tds[2].textContent = fd.get('exam_duration') || document.getElementById('edit_subject_duration').value || '';
+                                        // question items
+                                        tds[3].textContent = fd.get('question_items') || document.getElementById('edit_subject_items').value || '';
                                     }
                                 }
                             }
@@ -513,6 +525,10 @@ if (!empty($_SESSION['subject_msg'])) {
                         <label for="subject_duration" class="form-label">Exam Duration (minutes)</label>
                         <input type="number" id="subject_duration" name="exam_duration" class="form-control" min="0" placeholder="e.g. 30">
                     </div>
+                    <div class="mb-3">
+                        <label for="subject_items" class="form-label">Question Items</label>
+                        <input type="number" id="subject_items" name="question_items" class="form-control" min="0" placeholder="e.g. 50">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -551,7 +567,8 @@ if (!empty($_SESSION['subject_msg'])) {
                             if (resp && resp.success) {
                                 document.getElementById('viewSubjectName').textContent = resp.data.name;
                                 document.getElementById('viewSubjectCode').textContent = resp.data.code;
-                                document.getElementById('viewSubjectDuration').textContent = resp.data.exam_duration !== undefined ? resp.data.exam_duration : '';
+                                    document.getElementById('viewSubjectDuration').textContent = resp.data.exam_duration !== undefined ? resp.data.exam_duration : '';
+                                    document.getElementById('viewSubjectItems').textContent = resp.data.question_items !== undefined ? resp.data.question_items : '';
                                 var m = new bootstrap.Modal(document.getElementById('viewSubjectModal'));
                                 m.show();
                             } else {
@@ -574,6 +591,7 @@ if (!empty($_SESSION['subject_msg'])) {
                                 document.getElementById('edit_subject_name').value = resp.data.name;
                                 document.getElementById('edit_subject_code').value = resp.data.code;
                                 document.getElementById('edit_subject_duration').value = resp.data.exam_duration !== undefined ? resp.data.exam_duration : '';
+                                document.getElementById('edit_subject_items').value = resp.data.question_items !== undefined ? resp.data.question_items : '';
                                 document.getElementById('edit_subject_id').value = resp.data.id;
                                 var m = new bootstrap.Modal(document.getElementById('editSubjectModal'));
                                 m.show();
@@ -610,19 +628,20 @@ if (!empty($_SESSION['subject_msg'])) {
                     var name = (resp.data && resp.data.name) || fd.get('subject_name');
                     var code = (resp.data && resp.data.code) || fd.get('subject_code');
                     var duration = (resp.data && typeof resp.data.exam_duration !== 'undefined') ? resp.data.exam_duration : (fd.get('exam_duration') || '');
+                    var items = (resp.data && typeof resp.data.question_items !== 'undefined') ? resp.data.question_items : (fd.get('question_items') || '');
                     var actionHtml = '<a href="#" class="btn-view-subject text-primary me-2 fs-5" data-id="' + id + '" title="View"><i class="feather-eye"></i></a>' +
                                      '<a href="#" class="btn-edit-subject text-primary me-2 fs-5" data-id="' + id + '" title="Edit"><i class="feather-edit"></i></a>' +
                                      '<a href="#" class="btn-delete-subject text-danger fs-5" data-id="' + id + '" title="Delete"><i class="feather-trash-2"></i></a>';
                     try {
                         if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {
                             var dt = $('#myTable').DataTable();
-                            var newRow = dt.row.add([name, code, duration, actionHtml]).draw(false).node();
+                            var newRow = dt.row.add([name, code, duration, items, actionHtml]).draw(false).node();
                             bindRowButtons(newRow);
                         } else {
                             var tbody = document.querySelector('#myTable tbody');
                             if (tbody) {
                                 var tr = document.createElement('tr');
-                                tr.innerHTML = '<td>' + (name || '') + '</td><td>' + (code || '') + '</td><td>' + (duration || '') + '</td><td>' + actionHtml + '</td>';
+                                tr.innerHTML = '<td>' + (name || '') + '</td><td>' + (code || '') + '</td><td>' + (duration || '') + '</td><td>' + (items || '') + '</td><td>' + actionHtml + '</td>';
                                 tbody.appendChild(tr);
                                 bindRowButtons(tr);
                             }
