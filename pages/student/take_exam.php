@@ -102,6 +102,7 @@ if (isset($conn) && $subjects_id > 0) {
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
     <?php include "includes/css_scripts_head.php"; ?>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <style>
     /* Ensure nav vertical line sits behind the circular nav buttons */
     #questionNav { position: relative; }
@@ -206,7 +207,7 @@ if (isset($conn) && $subjects_id > 0) {
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-3">
+                    <div class="col-lg-3" style="position:relative">
                         <div class="card h-100">
                             <div class="card-header bg-soft-secondary border-soft-secondary text-secondary">
                                 <h6 class="card-title mb-0">Question Navigation</h6>
@@ -216,6 +217,15 @@ if (isset($conn) && $subjects_id > 0) {
                                 <div id="questionNav" class="d-flex align-items-center flex-column" style="height:100%; overflow-y:auto; gap:6px; padding:6px;"></div>
                             </div>
                         </div>
+                            <div id="resultCard" class="card mt-3" style="display:none; position:absolute; left:6px; right:6px; top:auto; z-index:50">
+                                <div class="card-header bg-soft-success border-soft-success text-success">
+                                    <h6 class="card-title mb-0">Result</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="resultSummary" class="mb-3">Score: <span id="resultScore">0</span></div>
+                                    <div id="resultChart"></div>
+                                </div>
+                            </div>
                     </div>
                 </div>
             </div>
@@ -226,6 +236,7 @@ if (isset($conn) && $subjects_id > 0) {
         <?php include "includes/footer.php"; ?>
         <!-- [ Footer ] end -->
     </main>
+    
     <!--! ================================================================ !-->
     <!--! [End] Main Content !-->
     <!--! ================================================================ !-->
@@ -552,6 +563,7 @@ if (isset($conn) && $subjects_id > 0) {
             }).then(function(res){ return res.json(); }).then(function(json){
                 if (json && json.success) {
                     showToast('success','Exam submitted — score: ' + payload.score);
+                    try { renderResult(payload.score, questions.length, json.id); } catch (e) { console.error(e); }
                 } else {
                     showToast('error',(json && json.error) ? json.error : 'Submission failed');
                 }
@@ -576,6 +588,46 @@ if (isset($conn) && $subjects_id > 0) {
             startTimer();
             renderQuestion(current);
         });
+
+        function renderResult(correct, total, attemptId) {
+            correct = parseInt(correct,10) || 0;
+            total = parseInt(total,10) || 0;
+            var incorrect = Math.max(0, total - correct);
+            var pct = total > 0 ? Math.round((correct/total)*100) : 0;
+            var scoreEl = document.getElementById('resultScore');
+            if (scoreEl) scoreEl.textContent = correct + ' / ' + total + ' (' + pct + '%)';
+            // show card (absolutely position it below the navigation so it doesn't change left column layout)
+            var card = document.getElementById('resultCard');
+            if (card) {
+                card.style.display = '';
+                try {
+                    var nav = document.getElementById('questionNav');
+                    var parent = card.parentElement; // the col-lg-3 with position:relative
+                    if (nav && parent) {
+                        var top = nav.offsetTop + nav.offsetHeight + 12; // px inside parent
+                        card.style.top = top + 'px';
+                    }
+                } catch (e) { console.error(e); }
+            }
+            // render Apex donut/pie
+            try {
+                var chartEl = document.getElementById('resultChart');
+                if (!chartEl) return;
+                chartEl.innerHTML = '';
+                var options = {
+                    chart: { type: 'donut', height: 250 },
+                    series: [correct, incorrect],
+                    labels: ['Correct', 'Incorrect'],
+                    colors: ['#28a745', '#dc3545'],
+                    legend: { position: 'bottom' },
+                    tooltip: { y: { formatter: function(val){ return val + ' items'; } } }
+                };
+                var chart = new ApexCharts(chartEl, options);
+                chart.render();
+            } catch (e) { console.error(e); }
+            // scroll to result card
+            try { if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+        }
     });
     </script>
     <!--! ================================================================ !-->
