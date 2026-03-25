@@ -109,6 +109,23 @@ if (isset($conn) && $subjects_id > 0) {
     .nav-line { z-index: 1; }
     #questionNav .qn-nav-btn { position: relative; z-index: 2; background: #fff; }
     #questionNav span { position: relative; z-index: 1; }
+    /* Right column: stack result card above navigation and make nav scrollable */
+    .right-col { display: flex; flex-direction: column; gap: 0.75rem; }
+    .right-col .card.h-100 { flex: 1 1 auto; display: flex; flex-direction: column; }
+    .right-col .card.h-100 .card-body { padding: 0.75rem; position: relative; flex: 1 1 auto; min-height: 0; }
+    /* Navigation card body will be synced to left Take Exam card height during active exam */
+    #questionNavCard .card-body { max-height: 420px; min-height: 240px; overflow-y: auto; padding: 6px; position: relative; }
+    #questionNav { overflow-y: auto; gap: 6px; display: flex; flex-direction: column; align-items: center; min-height: 0; }
+    /* Smaller circular nav buttons (radio-button-like) */
+    .qn-nav-btn.qn-small { width: 14px !important; height: 14px !important; padding: 0 !important; font-size: 10px !important; line-height: 14px !important; border-radius: 50% !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+    .qn-nav-btn.qn-small.btn-success { color: #fff !important; }
+    /* Slightly larger for vertical layout */
+    .qn-nav-btn.qn-vertical.qn-small { width: 16px !important; height: 16px !important; line-height: 16px !important; }
+    /* Reduce gap between buttons for compactness */
+    #questionNav > .qn-nav-btn { margin: 2px !important; }
+    /* Slightly tighten nav card padding and spacing */
+    #questionNavCard .card-body { padding: 4px; }
+    .right-col { gap: 0.5rem; }
     </style>
     <!-- DataTables CSS (CDN) -->
     <!--! END: Custom CSS-->
@@ -175,9 +192,9 @@ if (isset($conn) && $subjects_id > 0) {
             <!-- [ page-header ] end -->
             <!-- [ Main Content ] start -->
             <div class="main-content">
-                <div class="row">
+                <div class="row align-items-start">
                     <div class="col-lg-9">
-                        <div class="card h-100">
+                        <div class="card">
                             <div class="card-header bg-soft-info border-soft-info text-info d-flex align-items-center justify-content-between">
                                 <h5 class="card-title mb-0">Take Exam
                                     <?php if (!empty($subject_name)): ?>
@@ -187,6 +204,9 @@ if (isset($conn) && $subjects_id > 0) {
                                 <div class="d-flex align-items-center gap-2">
                                     <span id="timerDisplay" class="badge bg-primary">00:00</span>
                                     <button id="startExamBtn" class="btn btn-outline-primary btn-sm">Take Exam</button>
+                                    <button id="infoBtn" class="btn btn-info btn-sm rounded-circle" title="Show answer info" style="display:none; width:34px; height:34px; padding:0; align-items:center; justify-content:center;">
+                                        i
+                                    </button>
                                 </div>
                             </div>
                             <div class="card-body p-0">
@@ -207,17 +227,17 @@ if (isset($conn) && $subjects_id > 0) {
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-3" style="position:relative">
-                        <div class="card h-100">
-                            <div class="card-header bg-soft-secondary border-soft-secondary text-secondary">
-                                <h6 class="card-title mb-0">Question Navigation</h6>
+                    <div class="col-lg-3 right-col" style="position:relative">
+                            <div class="card h-100" id="questionNavCard">
+                                <div class="card-header bg-soft-secondary border-soft-secondary text-secondary">
+                                    <h6 class="card-title mb-0">Question Navigation</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="nav-line" style="position:absolute; left:50%; top:12px; bottom:12px; width:2px; background:#e9ecef; transform:translateX(-50%);"></div>
+                                    <div id="questionNav" class="d-flex align-items-center flex-column"></div>
+                                </div>
                             </div>
-                            <div class="card-body" style="padding:0.75rem; position:relative;">
-                                <div class="nav-line" style="position:absolute; left:50%; top:12px; bottom:12px; width:2px; background:#e9ecef; transform:translateX(-50%);"></div>
-                                <div id="questionNav" class="d-flex align-items-center flex-column" style="height:100%; overflow-y:auto; gap:6px; padding:6px;"></div>
-                            </div>
-                        </div>
-                            <div id="resultCard" class="card mt-3" style="display:none; position:absolute; left:6px; right:6px; top:auto; z-index:50">
+                            <div id="resultCard" class="card mb-3" style="display:none;">
                                 <div class="card-header bg-soft-success border-soft-success text-success">
                                     <h6 class="card-title mb-0">Result</h6>
                                 </div>
@@ -342,6 +362,7 @@ if (isset($conn) && $subjects_id > 0) {
         var nextBtn = document.getElementById('nextBtn');
         var submitBtn = document.getElementById('submitBtn');
         var questionNav = document.getElementById('questionNav');
+        var infoBtn = document.getElementById('infoBtn');
 
         function buildNavButtonLabel(i) {
             return (i + 1).toString();
@@ -368,6 +389,8 @@ if (isset($conn) && $subjects_id > 0) {
                         var btn = document.createElement('button');
                         btn.type = 'button';
                         btn.className = 'qn-nav-btn btn btn-sm';
+                        // apply compact sizing class
+                        btn.classList.add('qn-small');
                         btn.setAttribute('data-index', i);
                         btn.style.borderRadius = '50%';
                         btn.style.width = '36px';
@@ -391,13 +414,7 @@ if (isset($conn) && $subjects_id > 0) {
                             btn.style.boxShadow = '0 0 0 3px rgba(13,110,253,0.12)';
                         }
                         if (isVertical) {
-                            btn.style.width = '40px';
-                            btn.style.height = '40px';
-                            btn.style.margin = '4px 0';
-                        } else {
-                            btn.style.width = '36px';
-                            btn.style.height = '36px';
-                            btn.style.margin = '4px';
+                            btn.classList.add('qn-vertical');
                         }
                         btn.addEventListener('click', function(){
                             saveCurrentAnswer();
@@ -563,7 +580,11 @@ if (isset($conn) && $subjects_id > 0) {
             }).then(function(res){ return res.json(); }).then(function(json){
                 if (json && json.success) {
                     showToast('success','Exam submitted — score: ' + payload.score);
-                    try { renderResult(payload.score, questions.length, json.id); } catch (e) { console.error(e); }
+                    try {
+                        // show info button now that exam is submitted
+                        if (infoBtn) infoBtn.style.display = '';
+                        renderResult(payload.score, questions.length, json.id);
+                    } catch (e) { console.error(e); }
                 } else {
                     showToast('error',(json && json.error) ? json.error : 'Submission failed');
                 }
@@ -587,7 +608,24 @@ if (isset($conn) && $subjects_id > 0) {
             startBtn.disabled = true;
             startTimer();
             renderQuestion(current);
+            // ensure question navigation matches the visible Take Exam card height
+            try { if (typeof syncNavHeight === 'function') syncNavHeight(); } catch (e) {}
         });
+
+        // sync nav card body height to the left Take Exam card while the exam is active
+        function syncNavHeight() {
+            try {
+                var navBody = document.querySelector('#questionNavCard .card-body');
+                var leftCard = examContainerEl ? examContainerEl.closest('.card') : null;
+                if (!navBody || !leftCard) return;
+                var h = leftCard.offsetHeight;
+                // set explicit height so nav stays the same size while taking the exam
+                navBody.style.height = h + 'px';
+            } catch (e) { /* ignore */ }
+        }
+
+        // keep heights in sync on window resize (only when exam started)
+        window.addEventListener('resize', function(){ try { if (startBtn && startBtn.disabled) syncNavHeight(); } catch(e){} });
 
         function renderResult(correct, total, attemptId) {
             correct = parseInt(correct,10) || 0;
@@ -600,14 +638,6 @@ if (isset($conn) && $subjects_id > 0) {
             var card = document.getElementById('resultCard');
             if (card) {
                 card.style.display = '';
-                try {
-                    var nav = document.getElementById('questionNav');
-                    var parent = card.parentElement; // the col-lg-3 with position:relative
-                    if (nav && parent) {
-                        var top = nav.offsetTop + nav.offsetHeight + 12; // px inside parent
-                        card.style.top = top + 'px';
-                    }
-                } catch (e) { console.error(e); }
             }
             // render Apex donut/pie
             try {
@@ -628,6 +658,35 @@ if (isset($conn) && $subjects_id > 0) {
             // scroll to result card
             try { if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
         }
+        // show info modal for current question (populated from server-provided `questions` array)
+        function showInfoForQuestion(index) {
+            if (!questions || !questions.length) return;
+            var q = questions[index];
+            if (!q) return;
+            var correctKey = q.correct_ans || null;
+            var correctText = '';
+            if (correctKey && q.answers && q.answers[correctKey]) {
+                correctText = q.answers[correctKey];
+            } else if (q.shuffledAnswers && q.shuffledAnswers.length) {
+                for (var i = 0; i < q.shuffledAnswers.length; i++) {
+                    if (q.shuffledAnswers[i].key === correctKey) { correctText = q.shuffledAnswers[i].text; break; }
+                }
+            }
+            var modal = document.getElementById('resultInfoModal');
+            if (!modal) return;
+            var titleEl = modal.querySelector('.modal-title');
+            var bodyEl = modal.querySelector('.modal-body');
+            titleEl.textContent = 'Question ' + (index + 1) + ' — Correct answer';
+            var html = '<p class="fw-bold">' + (q.question || '') + '</p>';
+            html += '<p><strong>Answer:</strong> ' + (correctKey ? correctKey + '. ' : '') + (correctText || '-') + '</p>';
+            if (q.remarks) html += '<hr/><div class="fs-6">' + q.remarks + '</div>';
+            bodyEl.innerHTML = html;
+            try { var bsModal = new bootstrap.Modal(modal); bsModal.show(); } catch (e) { alert((q.remarks || '') + '\n\nAnswer: ' + (correctText || correctKey || '')); }
+        }
+
+        if (infoBtn) {
+            infoBtn.addEventListener('click', function(){ showInfoForQuestion(current); });
+        }
     });
     </script>
     <!--! ================================================================ !-->
@@ -647,6 +706,23 @@ if (isset($conn) && $subjects_id > 0) {
         });
     });
     </script>
+    <!-- Info modal (shows correct answer and remarks) -->
+    <div class="modal fade" id="resultInfoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Answer Info</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- populated dynamically -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!--! END: Theme Customizer !-->
 </body>
 
