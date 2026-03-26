@@ -215,6 +215,7 @@ if (isset($conn) && $subjects_id > 0) {
                                         <div id="questionNumber" class="mb-2 fw-bold"></div>
                                         <div id="questionText" class="mb-3 fs-5"></div>
                                         <div id="optionsList" class="mb-3"></div>
+                                        <br>
                                         <div class="d-flex justify-content-between">
                                             <button id="prevBtn" class="btn btn-secondary btn-sm">Previous</button>
                                             <div>
@@ -362,7 +363,8 @@ if (isset($conn) && $subjects_id > 0) {
         var nextBtn = document.getElementById('nextBtn');
         var submitBtn = document.getElementById('submitBtn');
         var questionNav = document.getElementById('questionNav');
-        var infoBtn = document.getElementById('infoBtn');
+        // flag set after successful submission so feedback is shown inline
+        var examSubmitted = false;
 
         function buildNavButtonLabel(i) {
             return (i + 1).toString();
@@ -495,8 +497,9 @@ if (isset($conn) && $subjects_id > 0) {
                 var id = 'opt_' + index + '_' + item.key;
                 var div = document.createElement('div');
                 div.className = 'form-check mb-2';
+                // hide the answer letter visually but keep it for screen readers
                 div.innerHTML = '<input class="form-check-input" type="radio" name="examOption" id="' + id + '" value="' + item.key + '">'
-                    + '<label class="form-check-label ms-2" for="' + id + '"><strong>' + item.key + '.</strong> ' + (item.text || '') + '</label>';
+                    + '<label class="form-check-label ms-2" for="' + id + '"><span class="visually-hidden">' + item.key + '. </span>' + (item.text || '') + '</label>';
                 optionsList.appendChild(div);
             }
             // restore selection if previously answered
@@ -506,7 +509,14 @@ if (isset($conn) && $subjects_id > 0) {
             }
             prevBtn.disabled = (index === 0);
             // keep Next enabled even on last question (it becomes Submit)
-            nextBtn.disabled = false;
+            // do not re-enable next/submit if submit is currently disabled or exam already submitted
+            try {
+                if (examSubmitted || (submitBtn && submitBtn.disabled)) {
+                    nextBtn.disabled = true;
+                } else {
+                    nextBtn.disabled = false;
+                }
+            } catch (e) { nextBtn.disabled = false; }
             // If only one question, show Submit and hide Next. Otherwise, on last question make Next behave as Submit.
             try {
                 if (questions.length === 1) {
@@ -515,14 +525,61 @@ if (isset($conn) && $subjects_id > 0) {
                 } else {
                     if (index === questions.length - 1) {
                         if (submitBtn) submitBtn.style.display = 'none';
-                        if (nextBtn) { nextBtn.style.display = ''; nextBtn.textContent = 'Submit'; }
+                        if (nextBtn) {
+                            nextBtn.style.display = '';
+                            nextBtn.textContent = 'Submit';
+                            // preserve disabled state handled above; do not force-enable here
+                        }
                     } else {
                         if (submitBtn) submitBtn.style.display = 'none';
-                        if (nextBtn) { nextBtn.style.display = ''; nextBtn.textContent = 'Next'; }
+                        if (nextBtn) {
+                            nextBtn.style.display = '';
+                            nextBtn.textContent = 'Next';
+                        }
                     }
                 }
             } catch (e) {}
             try { renderNav(); } catch (e) {}
+            // if exam has been submitted, show inline feedback (correct answer + remarks)
+            try { if (examSubmitted) renderFeedbackForQuestion(index); } catch (e) {}
+        }
+
+        // render feedback (correct answer + remarks) under the choices
+        function renderFeedbackForQuestion(index) {
+            try {
+                if (!questions || !questions.length) return;
+                var q = questions[index]; if (!q) return;
+                // ensure feedback container exists
+                var fb = document.getElementById('questionFeedback');
+                if (!fb) {
+                    fb = document.createElement('div');
+                    fb.id = 'questionFeedback';
+                    fb.className = 'mt-3 p-2 border rounded bg-light';
+                    if (optionsList && optionsList.parentNode) {
+                        optionsList.parentNode.insertBefore(fb, optionsList.nextSibling);
+                    }
+                }
+                // find correct answer text and determine student's answer status
+                var correctKey = q.correct_ans || null;
+                var correctText = '';
+                var userAnswer = answers[q.id] || null;
+                var statusClass = '';
+                if (userAnswer !== null) {
+                    statusClass = (String(userAnswer) === String(correctKey)) ? 'text-success' : 'text-danger';
+                }
+                if (correctKey && q.answers && q.answers[correctKey]) {
+                    correctText = q.answers[correctKey];
+                } else if (q.shuffledAnswers && q.shuffledAnswers.length) {
+                    for (var i = 0; i < q.shuffledAnswers.length; i++) {
+                        if (q.shuffledAnswers[i].key === correctKey) { correctText = q.shuffledAnswers[i].text; break; }
+                    }
+                }
+                var html = '<p class="mb-1"><strong>Correct Answer:</strong> ' + (correctKey ? '<span class="visually-hidden">' + correctKey + '. </span>' : '') + (correctText || '-') + '</p>';
+                if (q.remarks) html += '<div class="mt-2"><strong>Remarks:</strong><div class="mt-1">' + q.remarks + '</div></div>';
+                // apply status color to the feedback container when user answered
+                fb.className = 'mt-3 p-2 border rounded bg-light' + (statusClass ? ' ' + statusClass : '');
+                fb.innerHTML = html;
+            } catch (e) { console.error(e); }
         }
 
         function saveCurrentAnswer() {
@@ -537,6 +594,8 @@ if (isset($conn) && $subjects_id > 0) {
 
         function submitExam(force) {
             force = !!force;
+            // prevent double submission if already submitted
+            if (examSubmitted) { showToast('error','Exam already submitted'); return; }
             // Save current answer if possible
             saveCurrentAnswer();
 
@@ -561,16 +620,8 @@ if (isset($conn) && $subjects_id > 0) {
             // stop the timer immediately upon submission
             if (examTimer) { clearInterval(examTimer); examTimer = null; }
 
-            // disable UI to prevent further changes
-            try {
-                if (prevBtn) prevBtn.disabled = true;
-                if (nextBtn) nextBtn.disabled = true;
-                if (submitBtn) submitBtn.disabled = true;
-                // disable all option inputs
-                document.querySelectorAll('input[name="examOption"]').forEach(function(i){ i.disabled = true; });
-                // disable nav buttons
-                document.querySelectorAll('.qn-nav-btn').forEach(function(b){ b.disabled = true; });
-            } catch (e) { /* ignore */ }
+            // disable submit/next while request is in-flight to avoid duplicate requests
+            try { if (submitBtn) submitBtn.disabled = true; if (nextBtn) nextBtn.disabled = true; } catch (e) {}
 
             fetch('functions/attempts.php', {
                 method: 'POST',
@@ -581,14 +632,22 @@ if (isset($conn) && $subjects_id > 0) {
                 if (json && json.success) {
                     showToast('success','Exam submitted — score: ' + payload.score);
                     try {
-                        // show info button now that exam is submitted
-                        if (infoBtn) infoBtn.style.display = '';
+                        // mark exam submitted and display inline feedback
+                        examSubmitted = true;
+                        // ensure submit/next remain disabled to prevent re-submission
+                        try { if (submitBtn) submitBtn.disabled = true; if (nextBtn) nextBtn.disabled = true; } catch (e) {}
+                        try { renderFeedbackForQuestion(current); } catch (e) {}
                         renderResult(payload.score, questions.length, json.id);
                     } catch (e) { console.error(e); }
                 } else {
                     showToast('error',(json && json.error) ? json.error : 'Submission failed');
+                    // re-enable controls so user can retry
+                    try { if (submitBtn) submitBtn.disabled = false; if (nextBtn) nextBtn.disabled = false; } catch (e) {}
                 }
-            }).catch(function(err){ showToast('error', err.message || 'Request failed'); });
+            }).catch(function(err){
+                showToast('error', err.message || 'Request failed');
+                try { if (submitBtn) submitBtn.disabled = false; if (nextBtn) nextBtn.disabled = false; } catch (e) {}
+            });
         }
 
         // wire submit button to normal (non-forced) submit
@@ -658,35 +717,7 @@ if (isset($conn) && $subjects_id > 0) {
             // scroll to result card
             try { if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
         }
-        // show info modal for current question (populated from server-provided `questions` array)
-        function showInfoForQuestion(index) {
-            if (!questions || !questions.length) return;
-            var q = questions[index];
-            if (!q) return;
-            var correctKey = q.correct_ans || null;
-            var correctText = '';
-            if (correctKey && q.answers && q.answers[correctKey]) {
-                correctText = q.answers[correctKey];
-            } else if (q.shuffledAnswers && q.shuffledAnswers.length) {
-                for (var i = 0; i < q.shuffledAnswers.length; i++) {
-                    if (q.shuffledAnswers[i].key === correctKey) { correctText = q.shuffledAnswers[i].text; break; }
-                }
-            }
-            var modal = document.getElementById('resultInfoModal');
-            if (!modal) return;
-            var titleEl = modal.querySelector('.modal-title');
-            var bodyEl = modal.querySelector('.modal-body');
-            titleEl.textContent = 'Question ' + (index + 1) + ' — Correct answer';
-            var html = '<p class="fw-bold">' + (q.question || '') + '</p>';
-            html += '<p><strong>Answer:</strong> ' + (correctKey ? correctKey + '. ' : '') + (correctText || '-') + '</p>';
-            if (q.remarks) html += '<hr/><div class="fs-6">' + q.remarks + '</div>';
-            bodyEl.innerHTML = html;
-            try { var bsModal = new bootstrap.Modal(modal); bsModal.show(); } catch (e) { alert((q.remarks || '') + '\n\nAnswer: ' + (correctText || correctKey || '')); }
-        }
-
-        if (infoBtn) {
-            infoBtn.addEventListener('click', function(){ showInfoForQuestion(current); });
-        }
+        // info button and modal removed — feedback is shown inline after submission
     });
     </script>
     <!--! ================================================================ !-->
@@ -706,23 +737,7 @@ if (isset($conn) && $subjects_id > 0) {
         });
     });
     </script>
-    <!-- Info modal (shows correct answer and remarks) -->
-    <div class="modal fade" id="resultInfoModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Answer Info</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- populated dynamically -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Info modal removed — feedback is displayed inline under choices -->
     <!--! END: Theme Customizer !-->
 </body>
 
