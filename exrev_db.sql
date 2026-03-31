@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 24, 2026 at 01:44 AM
+-- Generation Time: Mar 26, 2026 at 02:09 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -65,7 +65,54 @@ INSERT INTO `tbl_attempts` (`id`, `user_id`, `score`, `subjects_id`, `date_creat
 (2, 6, 0, 2, '2026-03-23 23:34:19'),
 (3, 6, 1, 2, '2026-03-23 23:34:19'),
 (4, 6, 1, 2, '2026-03-23 23:34:41'),
-(5, 6, 0, 2, '2026-03-24 00:43:40');
+(5, 6, 0, 2, '2026-03-24 00:43:40'),
+(6, 6, 1, 2, '2026-03-25 11:03:44'),
+(7, 6, 0, 2, '2026-03-25 11:08:18'),
+(8, 6, 1, 2, '2026-03-25 11:13:08'),
+(9, 6, 0, 2, '2026-03-25 11:15:18'),
+(10, 6, 0, 2, '2026-03-25 11:17:41'),
+(11, 6, 0, 2, '2026-03-25 11:19:59'),
+(12, 6, 0, 2, '2026-03-25 11:21:18'),
+(13, 6, 0, 2, '2026-03-25 11:24:11'),
+(14, 6, 0, 2, '2026-03-25 11:26:10'),
+(15, 6, 0, 2, '2026-03-25 11:27:46'),
+(16, 6, 0, 2, '2026-03-25 11:30:34'),
+(17, 6, 0, 2, '2026-03-25 11:31:47'),
+(18, 6, 0, 2, '2026-03-25 11:36:08'),
+(19, 6, 0, 2, '2026-03-25 11:45:02'),
+(20, 6, 0, 2, '2026-03-25 11:48:20'),
+(21, 6, 0, 2, '2026-03-25 11:54:23'),
+(22, 6, 1, 2, '2026-03-25 11:55:00'),
+(23, 6, 0, 2, '2026-03-25 11:58:20'),
+(24, 6, 0, 2, '2026-03-25 12:02:06'),
+(25, 6, 0, 2, '2026-03-25 12:03:24'),
+(26, 6, 0, 2, '2026-03-25 12:06:36'),
+(27, 6, 1, 2, '2026-03-25 12:08:52'),
+(28, 6, 1, 2, '2026-03-25 12:12:44'),
+(29, 6, 0, 2, '2026-03-26 12:05:25'),
+(30, 6, 1, 2, '2026-03-26 12:09:25'),
+(31, 6, 2, 2, '2026-03-26 12:13:00'),
+(32, 6, 2, 2, '2026-03-26 12:13:08'),
+(33, 6, 0, 2, '2026-03-26 12:21:52'),
+(34, 6, 1, 2, '2026-03-26 12:25:59'),
+(35, 6, 0, 2, '2026-03-26 12:28:53'),
+(36, 6, 2, 2, '2026-03-26 12:31:53'),
+(37, 6, 0, 2, '2026-03-26 12:33:22'),
+(38, 6, 2, 2, '2026-03-26 12:34:10'),
+(39, 6, 1, 2, '2026-03-26 12:36:45'),
+(40, 6, 1, 2, '2026-03-26 12:37:08'),
+(41, 6, 2, 2, '2026-03-26 12:42:15'),
+(42, 6, 2, 2, '2026-03-26 12:42:18'),
+(43, 6, 2, 2, '2026-03-26 12:44:23'),
+(44, 6, 1, 2, '2026-03-26 12:46:30'),
+(45, 6, 1, 2, '2026-03-26 12:46:32'),
+(46, 6, 0, 2, '2026-03-26 12:51:00'),
+(47, 6, 0, 2, '2026-03-26 12:51:03'),
+(48, 6, 0, 2, '2026-03-26 12:53:32'),
+(49, 6, 0, 2, '2026-03-26 12:53:35'),
+(50, 6, 1, 2, '2026-03-26 12:58:08'),
+(51, 6, 1, 2, '2026-03-26 12:58:53'),
+(52, 6, 0, 2, '2026-03-26 13:03:57');
 
 -- --------------------------------------------------------
 
@@ -157,7 +204,7 @@ CREATE TABLE `tbl_subjects` (
 --
 
 INSERT INTO `tbl_subjects` (`id`, `name`, `code`, `exam_duration`, `question_items`) VALUES
-(2, 'calc', 'tnt101', 60, 1),
+(2, 'calc', 'tnt101', 60, 10),
 (3, 'sd', 'asd', NULL, NULL),
 (4, 's', 'a', NULL, NULL),
 (5, 'testing', 'test101', NULL, NULL);
@@ -179,16 +226,17 @@ CREATE TABLE `tbl_users` (
   `usertypes_id` int(11) DEFAULT NULL,
   `year_level` enum('1','2','3','4','graduate','Graduate') DEFAULT NULL,
   `sections_id` int(11) DEFAULT NULL,
-  `academicyears_id` int(11) DEFAULT NULL
+  `academicyears_id` int(11) DEFAULT NULL,
+  `image_path` varchar(250) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `tbl_users`
 --
 
-INSERT INTO `tbl_users` (`id`, `last_name`, `first_name`, `middle_name`, `email`, `password`, `is_superuser`, `usertypes_id`, `year_level`, `sections_id`, `academicyears_id`) VALUES
-(1, NULL, NULL, NULL, 'jordan@gmail.com', '123', NULL, 1, NULL, NULL, NULL),
-(6, 'student', 'student', '', 'student@gmail.com', '123', NULL, 2, '4', 1, 5);
+INSERT INTO `tbl_users` (`id`, `last_name`, `first_name`, `middle_name`, `email`, `password`, `is_superuser`, `usertypes_id`, `year_level`, `sections_id`, `academicyears_id`, `image_path`) VALUES
+(1, NULL, NULL, NULL, 'jordan@gmail.com', '123', NULL, 1, NULL, NULL, NULL, NULL),
+(6, 'student', 'student', '', 'student@gmail.com', '123', NULL, 2, '4', 1, 5, NULL);
 
 -- --------------------------------------------------------
 
@@ -276,7 +324,7 @@ ALTER TABLE `tbl_academicyears`
 -- AUTO_INCREMENT for table `tbl_attempts`
 --
 ALTER TABLE `tbl_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 --
 -- AUTO_INCREMENT for table `tbl_modules`
