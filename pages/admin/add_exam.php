@@ -90,7 +90,7 @@ if ($stmt3) {
     <!--! BEGIN: Apps Title-->
     <title>EEReviewer || Add Exam</title>
     <!--! END:  Apps Title-->
-    <!--! BEGIN: Favicon-->-p45edf 78 
+    <!--! BEGIN: Favicon-->
     <?php include "includes/css_scripts_head.php"; ?>
     <!-- DataTables CSS (CDN) -->
     <!--! END: Custom CSS-->
