@@ -20,7 +20,7 @@ function login($conn)
             return false;
         }
 
-        $sql = "SELECT u.id, u.email, u.password, ut.name AS usertype_name FROM tbl_users u JOIN tbl_usertypes ut ON u.usertypes_id = ut.id WHERE u.email = ? LIMIT 1";
+        $sql = "SELECT u.id, u.email, u.password, u.is_active, ut.name AS usertype_name FROM tbl_users u JOIN tbl_usertypes ut ON u.usertypes_id = ut.id WHERE u.email = ? LIMIT 1";
         $stmt = mysqli_prepare($conn, $sql);
         if (!$stmt) {
             $_SESSION['login_error'] = 'Database error.';
@@ -45,6 +45,11 @@ function login($conn)
                 $ok = true;
             }
             if ($ok) {
+                // Prevent login if account is not active (is_active = 0)
+                if (isset($row['is_active']) && intval($row['is_active']) === 0) {
+                    $_SESSION['login_error'] = 'Your account is not active. Please wait for administrator approval.';
+                    return false;
+                }
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = $row['id'];
                 $_SESSION['email'] = $row['email'];
