@@ -68,7 +68,7 @@
                                 <span class="reportrange-picker-field"></span>
                             </div>
                             <div class="dropdown filter-dropdown">
-                                <a class="btn btn-md btn-light-brand" data-bs-toggle="dropdown" data-bs-offset="0, 10" data-bs-auto-close="outside">
+                                <a class="btn btn-md btn-light-brand" data-bs-toggle="dropdown" data-bs-offset="0, 10" data-bs-auto-close="outside" hidden>
                                     <i class="feather-filter me-2"></i>
                                     <span>Filter</span>
                                 </a>

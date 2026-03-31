@@ -91,11 +91,11 @@ $appBase = rtrim(str_replace('\\', '/', dirname(dirname(dirname($_SERVER['SCRIPT
             <div class="page-header">
                 <div class="page-header-left d-flex align-items-center">
                     <div class="page-header-title">
-                        <h5 class="m-b-10">Subjects</h5>
+                        <h5 class="m-b-10">Modules</h5>
                     </div>
                     <ul class="breadcrumb">
                         <li class="breadcrumb-item"><a href="index.html">Home</a></li>
-                        <li class="breadcrumb-item">Subjects</li>
+                        <li class="breadcrumb-item">Modules</li>
                     </ul>
                 </div>
                 <div class="page-header-right ms-auto">

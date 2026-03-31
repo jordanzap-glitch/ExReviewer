@@ -51,16 +51,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_close($stmt);
         } else {
             mysqli_stmt_close($stmt);
-            $hashed = password_hash($password, PASSWORD_DEFAULT);
-            $insert = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, year_level, sections_id, academicyears_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            mysqli_stmt_bind_param($insert, 'ssssssii', $lastname, $firstname, $middlename, $email, $hashed, $year_level, $section_id, $academicyears_id);
-            if (mysqli_stmt_execute($insert)) {
-                $success = 'Account created successfully.';
-                mysqli_stmt_close($insert);
-                $show_modal = true; // show modal then redirect on client
-            } else {
-                $error = 'Registration failed. Please try again.';
-                mysqli_stmt_close($insert);
+
+            // Handle optional image upload
+            $auth_path = null;
+            if (isset($_FILES['auth_path']) && ($_FILES['auth_path']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                $file = $_FILES['auth_path'];
+                if ($file['error'] === UPLOAD_ERR_OK) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mime = finfo_file($finfo, $file['tmp_name']);
+                    finfo_close($finfo);
+                    $allowed = ['image/jpeg', 'image/png', 'image/gif'];
+                    if (!in_array($mime, $allowed)) {
+                        $error = 'Invalid image type. Allowed: jpg, png, gif.';
+                    } elseif ($file['size'] > 2 * 1024 * 1024) {
+                        $error = 'Image too large. Max 2MB.';
+                    } else {
+                        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                        $targetDir = __DIR__ . '/assets/images/auth/identification/';
+                        if (!is_dir($targetDir)) {
+                            mkdir($targetDir, 0755, true);
+                        }
+                        $filename = uniqid('avatar_', true) . '.' . $ext;
+                        $targetPath = $targetDir . $filename;
+                        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                            $auth_path = 'assets/images/auth/identification/' . $filename;
+                        } else {
+                            $error = 'Failed to move uploaded file.';
+                        }
+                    }
+                } else {
+                    $error = 'File upload error.';
+                }
+            }
+
+            // If no upload errors, proceed to create account
+            if (empty($error)) {
+                $hashed = password_hash($password, PASSWORD_DEFAULT);
+                $insert = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, auth_path, year_level, sections_id, academicyears_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                mysqli_stmt_bind_param($insert, 'sssssssii', $lastname, $firstname, $middlename, $email, $hashed, $auth_path, $year_level, $section_id, $academicyears_id);
+                if (mysqli_stmt_execute($insert)) {
+                    $success = 'Account created successfully.';
+                    mysqli_stmt_close($insert);
+                    $show_modal = true; // show modal then redirect on client
+                } else {
+                    $error = 'Registration failed. Please try again.';
+                    mysqli_stmt_close($insert);
+                    // If file was uploaded but DB insert failed, optionally unlink the file? skipping for now
+                }
             }
         }
     }
@@ -121,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php if ($success): ?>
                             <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
                         <?php endif; ?>
-                        <form action="" method="post" class="w-100 mt-4 pt-2">
+                        <form action="" method="post" enctype="multipart/form-data" class="w-100 mt-4 pt-2">
                             <div class="row g-2">
                                 <div class="col-md-4 mb-4">
                                     <input type="text" name="lastname" class="form-control" placeholder="Last Name" required>
@@ -163,6 +200,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <option value="<?php echo (int)$ay['id']; ?>"><?php echo htmlspecialchars($ay['sy_start'] . ' - ' . $ay['sy_end']); ?></option>
                                         <?php endforeach; ?>
                                     </select>
+                                </div>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-md-4 mb-4">
+                                    <label class="form-label">Upload Image (optional)</label>
+                                    <input type="file" name="auth_path" class="form-control" accept="image/*">
                                 </div>
                             </div>
 

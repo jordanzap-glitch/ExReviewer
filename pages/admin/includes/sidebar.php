@@ -28,6 +28,7 @@
                         </a>
                         <ul class="nxl-submenu">
                             <li class="nxl-item"><a class="nxl-link" href="add_user.php">Add User</a></li>
+                            <li class="nxl-item"><a class="nxl-link" href="approval.php">Approvals</a></li>
                             <li class="nxl-item"><a class="nxl-link" href="add_section.php">Add Section</a></li>
                         </ul>
                     </li>
