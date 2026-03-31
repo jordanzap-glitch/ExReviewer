@@ -3,8 +3,8 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 26, 2026 at 02:09 PM
--- Server version: 10.4.32-MariaDB
+-- Generation Time: Mar 31, 2026 at 03:40 PM
+-- Server version: 12.0.2-MariaDB
 -- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -227,16 +227,18 @@ CREATE TABLE `tbl_users` (
   `year_level` enum('1','2','3','4','graduate','Graduate') DEFAULT NULL,
   `sections_id` int(11) DEFAULT NULL,
   `academicyears_id` int(11) DEFAULT NULL,
-  `image_path` varchar(250) DEFAULT NULL
+  `image_path` varchar(250) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL,
+  `auth_path` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `tbl_users`
 --
 
-INSERT INTO `tbl_users` (`id`, `last_name`, `first_name`, `middle_name`, `email`, `password`, `is_superuser`, `usertypes_id`, `year_level`, `sections_id`, `academicyears_id`, `image_path`) VALUES
-(1, NULL, NULL, NULL, 'jordan@gmail.com', '123', NULL, 1, NULL, NULL, NULL, NULL),
-(6, 'student', 'student', '', 'student@gmail.com', '123', NULL, 2, '4', 1, 5, NULL);
+INSERT INTO `tbl_users` (`id`, `last_name`, `first_name`, `middle_name`, `email`, `password`, `is_superuser`, `usertypes_id`, `year_level`, `sections_id`, `academicyears_id`, `image_path`, `is_active`, `auth_path`) VALUES
+(1, NULL, NULL, NULL, 'jordan@gmail.com', '123', NULL, 1, NULL, NULL, NULL, NULL, 1, NULL),
+(6, 'student', 'student', '', 'student@gmail.com', '123', NULL, 2, '4', 1, 5, NULL, 0, NULL);
 
 -- --------------------------------------------------------
 
