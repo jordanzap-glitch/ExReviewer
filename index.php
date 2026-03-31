@@ -1,4 +1,5 @@
 <?php
+error_reporting(E_ALL);
 session_start();
 // Prevent caching so browser Back button won't show protected pages after logout
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
