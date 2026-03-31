@@ -3,7 +3,6 @@
 <?php
 // DB and helper functions
 require_once __DIR__ . '/../../db/dbcon.php';
-require_once __DIR__ . '/functions/users.php';
 
 // Ensure user is logged in
 if (empty($_SESSION['user_id'])) {
