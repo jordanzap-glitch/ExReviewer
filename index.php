@@ -1,4 +1,5 @@
 <?php
+ob_start();
 error_reporting(E_ALL);
 session_start();
 // Prevent caching so browser Back button won't show protected pages after logout
@@ -324,5 +325,5 @@ login($conn);
     <script src="assets/js/theme-customizer-init.min.js"></script>
     <!--! END: Theme Customizer !-->
 </body>
-
+<?php ob_end_flush(); ?>
 </html>
