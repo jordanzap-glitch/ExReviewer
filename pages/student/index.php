@@ -1,4 +1,55 @@
-<?php include "includes/init.php"; ?>
+<?php include "includes/init.php";
+if (!isset($conn) || !$conn) {
+    require_once __DIR__ . '/../../db/dbcon.php';
+}
+
+$total_attempts = 0;
+$user_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+if ($user_id) {
+    $sql_attempts = "SELECT COUNT(id) AS cnt FROM tbl_attempts WHERE user_id = " . $user_id;
+    if ($res_attempts = mysqli_query($conn, $sql_attempts)) {
+        $row_attempts = mysqli_fetch_assoc($res_attempts);
+        $total_attempts = isset($row_attempts['cnt']) ? (int)$row_attempts['cnt'] : 0;
+    }
+}
+// Load subjects for the student attempts filter
+$subjects = [];
+$sql_subjects = "SELECT id, name FROM tbl_subjects ORDER BY name";
+if ($rs_sub = mysqli_query($conn, $sql_subjects)) {
+    while ($s = mysqli_fetch_assoc($rs_sub)) {
+        $subjects[] = $s;
+    }
+}
+
+// Compute student's rank based on their best attempt percent (score / question_items)
+$student_rank = null;
+$participants = 0;
+if ($user_id) {
+    // get current user's best ratio
+    $cur_sql = "SELECT MAX(at.score / NULLIF(st.question_items,0)) AS best_ratio FROM tbl_attempts at JOIN tbl_subjects st ON st.id = at.subjects_id WHERE at.user_id = " . $user_id . " AND st.question_items > 0";
+    $cur_ratio = null;
+    if ($cres = mysqli_query($conn, $cur_sql)) {
+        $crow = mysqli_fetch_assoc($cres);
+        if (!empty($crow['best_ratio'])) $cur_ratio = (float)$crow['best_ratio'];
+    }
+
+    if ($cur_ratio !== null) {
+        // count how many users have a better best_ratio
+        $count_sql = "SELECT COUNT(*) AS better FROM (SELECT at.user_id, MAX(at.score / NULLIF(st.question_items,0)) AS best_ratio FROM tbl_attempts at JOIN tbl_subjects st ON st.id = at.subjects_id WHERE st.question_items > 0 GROUP BY at.user_id) t WHERE t.best_ratio > " . $cur_ratio;
+        if ($cres2 = mysqli_query($conn, $count_sql)) {
+            $crow2 = mysqli_fetch_assoc($cres2);
+            $better = isset($crow2['better']) ? (int)$crow2['better'] : 0;
+            $student_rank = $better + 1;
+        }
+    }
+    // total participants (distinct users with attempts)
+    $p_sql = "SELECT COUNT(DISTINCT user_id) AS p FROM tbl_attempts";
+    if ($pres = mysqli_query($conn, $p_sql)) {
+        $prow = mysqli_fetch_assoc($pres);
+        $participants = isset($prow['p']) ? (int)$prow['p'] : 0;
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="zxx">
 
@@ -11,7 +62,7 @@
     <meta name="author" content="flexilecode" />
     <!--! The above 6 meta tags *must* come first in the head; any other head content must come *after* these tags !-->
     <!--! BEGIN: Apps Title-->
-    <title>Duralux || Dashboard</title>
+    <title>Student || Dashboard</title>
     <!--! END:  Apps Title-->
     <!--! BEGIN: Favicon-->
     <?php include "includes/css_scripts_head.php"; ?>
@@ -131,235 +182,51 @@
                     <div class="col-xxl-3 col-md-6">
                         <div class="card bg-soft-primary border-soft-primary text-primary overflow-hidden">
                             <div class="card-body">
-                                <i class="feather-users fs-20"></i>
-                                <h5 class="fs-4 text-reset mt-4 mb-1">8,475</h5>
-                                <div class="fs-12 text-reset fw-normal">Total Students</div>
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <i class="feather-users fs-20"></i>
+                                    <select id="attempt-subject-select" class="form-select form-select-sm" style="width:110px; font-size:12px; padding:2px 6px;">
+                                        <option value="">All Subjects</option>
+                                        <?php foreach ($subjects as $sub): ?>
+                                            <option value="<?php echo (int)$sub['id']; ?>"><?php echo htmlspecialchars($sub['name']); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <h5 class="fs-4 text-reset mt-4 mb-1" id="attempt-count"><?php echo number_format($total_attempts); ?></h5>
+                                <div class="fs-12 text-reset fw-normal">Total Attempts</div>
                             </div>
                         </div>
                     </div>
                     <!-- [Total Students] end -->
-                    <!-- [Total Exam] start -->
+                    <!-- [Trivia / Rank] start -->
                     <div class="col-xxl-3 col-md-6">
-                        <div class="card bg-soft-success border-soft-success text-success overflow-hidden">
+                        <div class="card bg-soft-info border-soft-info text-info overflow-hidden">
                             <div class="card-body">
-                                <i class="feather-file-text fs-20"></i>
-                                <h5 class="fs-4 text-reset mt-4 mb-1">1,200</h5>
-                                <div class="fs-12 text-reset fw-normal">Total Exam</div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h6 class="mb-1">Trivia</h6>
+                                        <?php if ($student_rank !== null): ?>
+                                            <div class="d-flex align-items-baseline gap-2">
+                                                <span class="badge bg-info text-white rounded-pill px-3 py-2" style="font-size:1.5rem; line-height:1;">#<?php echo (int)$student_rank; ?></span>
+                                                <small class="text-muted align-self-end">/ <?php echo (int)$participants; ?> participants</small>
+                                            </div>
+                                            <p class="mb-0 mt-2">Did you know you're ranked <strong>#<?php echo (int)$student_rank; ?></strong> based on your best attempt?</p>
+                                        <?php else: ?>
+                                            <h5 class="mb-1">Unranked</h5>
+                                            <p class="mb-0 mt-2">No attempts recorded yet — take an exam to get ranked.</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="text-end">
+                                        <i class="feather-award fs-28"></i>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <!-- [Total Exam] end -->
-                    <!-- [Total Lessons] start -->
-                    <div class="col-xxl-3 col-md-6">
-                        <div class="card bg-soft-warning border-soft-warning text-warning overflow-hidden">
-                            <div class="card-body">
-                                <i class="feather-book fs-20"></i>
-                                <h5 class="fs-4 text-reset mt-4 mb-1">3,200</h5>
-                                <div class="fs-12 text-reset fw-normal">Total Lessons</div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- [Total Lessons] end -->
+                    <!-- [Trivia / Rank] end -->
+                    <!-- Total Lessons card removed -->
                     <!-- Projects/Conversion cards removed per request -->
-                    <!-- [Payment Records] start -->
-                    <div class="col-xxl-12">
-                        <div class="card stretch stretch-full">
-                            <div class="card-header">
-                                <h5 class="card-title">Average Score (Overall)</h5>
-                                <div class="card-header-action">
-                                    <div class="card-header-btn">
-                                        <div data-bs-toggle="tooltip" title="Delete">
-                                            <a href="javascript:void(0);" class="avatar-text avatar-xs bg-danger" data-bs-toggle="remove"> </a>
-                                        </div>
-                                        <div data-bs-toggle="tooltip" title="Refresh">
-                                            <a href="javascript:void(0);" class="avatar-text avatar-xs bg-warning" data-bs-toggle="refresh"> </a>
-                                        </div>
-                                        <div data-bs-toggle="tooltip" title="Maximize/Minimize">
-                                            <a href="javascript:void(0);" class="avatar-text avatar-xs bg-success" data-bs-toggle="expand"> </a>
-                                        </div>
-                                    </div>
-                                    <div class="dropdown">
-                                        <a href="javascript:void(0);" class="avatar-text avatar-sm" data-bs-toggle="dropdown" data-bs-offset="25, 25">
-                                            <div data-bs-toggle="tooltip" title="Options">
-                                                <i class="feather-more-vertical"></i>
-                                            </div>
-                                        </a>
-                                        <div class="dropdown-menu dropdown-menu-end">
-                                            <a href="javascript:void(0);" class="dropdown-item"><i class="feather-at-sign"></i>New</a>
-                                            <a href="javascript:void(0);" class="dropdown-item"><i class="feather-calendar"></i>Event</a>
-                                            <a href="javascript:void(0);" class="dropdown-item"><i class="feather-bell"></i>Snoozed</a>
-                                            <a href="javascript:void(0);" class="dropdown-item"><i class="feather-trash-2"></i>Deleted</a>
-                                            <div class="dropdown-divider"></div>
-                                            <a href="javascript:void(0);" class="dropdown-item"><i class="feather-settings"></i>Settings</a>
-                                            <a href="javascript:void(0);" class="dropdown-item"><i class="feather-life-buoy"></i>Tips & Tricks</a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body custom-card-action p-0">
-                                <div id="average-score-area-chart" style="min-height:280px;"></div>
-                                <div class="p-3">
-                                    <div class="row g-3">
-                                        <div class="col-4">
-                                            <div class="card bg-soft-primary border-soft-primary text-primary overflow-hidden">
-                                                <div class="card-body p-2 d-flex align-items-center gap-3">
-                                                    <div class="avatar-text bg-soft-primary text-primary">
-                                                        <i class="feather-users"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="fs-12 text-muted">Average</div>
-                                                        <div class="fs-5 fw-bold">78%</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="card bg-soft-success border-soft-success text-success overflow-hidden">
-                                                <div class="card-body p-2 d-flex align-items-center gap-3">
-                                                    <div class="avatar-text bg-soft-success text-success">
-                                                        <i class="feather-award"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="fs-12 text-muted">Highest</div>
-                                                        <div class="fs-5 fw-bold">95%</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="card bg-soft-danger border-soft-danger text-danger overflow-hidden">
-                                                <div class="card-body p-2 d-flex align-items-center gap-3">
-                                                    <div class="avatar-text bg-soft-danger text-danger">
-                                                        <i class="feather-trending-down"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="fs-12 text-muted">Lowest</div>
-                                                        <div class="fs-5 fw-bold">65%</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- [Payment Records] end -->
-                    <!-- [Leads Status / Student Ranking] start -->
-                    <div class="col-xxl-12">
-                        <div class="card s  tretch stretch-full">
-                            <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
-                                <div>
-                                    <h5 class="card-title text-white mb-0">Student Rankings</h5>
-                                    <small class="text-white-50">Leads Status (Top performers)</small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-light text-primary text-dark">Top 5</span>
-                                    <div class="fw-bold text-white mt-1">8,475</div>
-                                    <div class="fs-12 text-white-50">Total Students</div>
-                                </div>
-                            </div>
-                            <div class="card-body custom-card-action p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">Name</th>
-                                                <th scope="col" class="wd-100">Avatar</th>
-                                                <th scope="col">Last Exam</th>
-                                                <th scope="col">Rank</th>
-                                                <th scope="col">Score</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td class="position-relative">
-                                                    <div class="ht-50 position-absolute start-0 top-50 translate-middle border-start border-5 border-success rounded"></div>
-                                                    <a href="javascript:void(0);">A. Thompson</a>
-                                                </td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="avatar-image avatar-md">
-                                                        <img src="assets/images/avatar/1.png" alt="" class="img-fluid">
-                                                    </a>
-                                                </td>
-                                                <td>15 June, 2023</td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="badge bg-soft-success text-success">1</a>
-                                                </td>
-                                                <td><a href="javascript:void(0);">98%</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="position-relative">
-                                                    <div class="ht-50 position-absolute start-0 top-50 translate-middle border-start border-5 border-warning rounded"></div>
-                                                    <a href="javascript:void(0);">H. Cherry</a>
-                                                </td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="avatar-image avatar-md">
-                                                        <img src="assets/images/avatar/2.png" alt="" class="img-fluid">
-                                                    </a>
-                                                </td>
-                                                <td>20 June, 2023</td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="badge bg-soft-warning text-warning">2</a>
-                                                </td>
-                                                <td><a href="javascript:void(0);">95%</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="position-relative">
-                                                    <div class="ht-50 position-absolute start-0 top-50 translate-middle border-start border-5 border-primary rounded"></div>
-                                                    <a href="javascript:void(0);">K. Hune</a>
-                                                </td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="avatar-image avatar-md">
-                                                        <img src="assets/images/avatar/3.png" alt="" class="img-fluid">
-                                                    </a>
-                                                </td>
-                                                <td>18 June, 2023</td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="badge bg-soft-primary text-primary">3</a>
-                                                </td>
-                                                <td><a href="javascript:void(0);">93%</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="position-relative">
-                                                    <div class="ht-50 position-absolute start-0 top-50 translate-middle border-start border-5 border-danger rounded"></div>
-                                                    <a href="javascript:void(0);">M. Hanvey</a>
-                                                </td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="avatar-image avatar-md">
-                                                        <img src="assets/images/avatar/4.png" alt="" class="img-fluid">
-                                                    </a>
-                                                </td>
-                                                <td>22 June, 2023</td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="badge bg-soft-danger text-danger">4</a>
-                                                </td>
-                                                <td><a href="javascript:void(0);">91%</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td class="position-relative">
-                                                    <div class="ht-50 position-absolute start-0 top-50 translate-middle border-start border-5 border-dark rounded"></div>
-                                                    <a href="javascript:void(0);">V. Maton</a>
-                                                </td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="avatar-image avatar-md">
-                                                        <img src="assets/images/avatar/5.png" alt="" class="img-fluid">
-                                                    </a>
-                                                </td>
-                                                <td>25 June, 2023</td>
-                                                <td>
-                                                    <a href="javascript:void(0)" class="badge bg-soft-primary text-primary">5</a>
-                                                </td>
-                                                <td><a href="javascript:void(0);">90%</a></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <a href="javascript:void(0);" class="card-footer fs-11 fw-bold text-uppercase text-center">Update: 30 Min Ago</a>
-                        </div>
-                    </div>
-                    <!-- [Leads Status / Student Ranking] end -->
+                    <!-- Average Score card removed -->
+                    <!-- Student Rankings card removed -->
                     <!-- [Mini] start -->
                     <!-- [Leads Overview] end -->
                     <!-- [Latest Leads] start -->
@@ -396,42 +263,24 @@
     <!--! BEGIN: Vendors JS !-->
     <?php include "includes/scripts.php"; ?>
 
+    
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var options = {
-            chart: { height: 350, type: 'area', stacked: false, toolbar: { show: false } },
-            series: [{ name: 'Average Score', data: [65, 70, 75, 80, 78, 82, 85], type: 'area' }],
-            stroke: { width: 2, curve: 'smooth', lineCap: 'round' },
-            colors: ['#3454d1'],
-            dataLabels: { enabled: false },
-            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.8, stops: [0, 100] } },
-            xaxis: {
-                type: 'category',
-                categories: ['2026-01-04','2026-01-11','2026-01-18','2026-01-25','2026-02-01','2026-02-08','2026-02-15'],
-                axisBorder: { show: false },
-                axisTicks: { show: false },
-                labels: { style: { fontSize: '11px', colors: '#64748b' } },
-                title: { text: 'Date (Week / Month)' }
-            },
-            yaxis: {
-                min: 0,
-                max: 100,
-                labels: {
-                    formatter: function (val) { return val + ' %'; },
-                    offsetX: -22,
-                    offsetY: 0,
-                    style: { fontSize: '11px', color: '#64748b' }
-                },
-                title: { text: 'Average Score (%)' }
-            },
-            grid: { padding: { left: 0, right: 0 }, strokeDashArray: 3, borderColor: '#ebebf3', row: { colors: ['#ebebf3','transparent'], opacity: 0.02 } },
-            legend: { show: false },
-            tooltip: { y: { formatter: function (val) { return val + ' %'; } }, style: { fontSize: '11px', fontFamily: 'Inter' } }
-        };
+    (function(){
+        var select = document.getElementById('attempt-subject-select');
+        var countEl = document.getElementById('attempt-count');
+        if (!select || !countEl) return;
 
-        var chart = new ApexCharts(document.querySelector('#average-score-area-chart'), options);
-        chart.render();
-    });
+        function updateCount(subjectId){
+            var url = 'functions/get_attempts_count.php';
+            if (subjectId) url += '?subject_id=' + encodeURIComponent(subjectId);
+            fetch(url, { credentials: 'same-origin' })
+                .then(function(resp){ if (!resp.ok) throw new Error('Network'); return resp.json(); })
+                .then(function(data){ countEl.textContent = data && typeof data.count === 'number' ? data.count.toLocaleString() : '0'; })
+                .catch(function(){ /* keep current value on error */ });
+        }
+
+        select.addEventListener('change', function(){ updateCount(this.value); });
+    })();
     </script>
 
     <!--! END: Theme Customizer !-->

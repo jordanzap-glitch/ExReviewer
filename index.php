@@ -145,13 +145,13 @@ login($conn);
                                         <input type="password" name="password" class="form-control" placeholder="Password" required>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between">
-                                        <div>
+                                        <div hidden>
                                             <div class="custom-control custom-checkbox">
                                                 <input type="checkbox" class="custom-control-input" id="rememberMe">
                                                 <label class="custom-control-label c-pointer" for="rememberMe">Remember Me</label>
                                             </div>
                                         </div>
-                                        <div>
+                                        <div hidden>
                                             <a href="auth-reset-creative.html" class="fs-11 text-primary">Forget password?</a>
                                         </div>
                                     </div>
