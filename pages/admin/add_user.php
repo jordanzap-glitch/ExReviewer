@@ -183,7 +183,7 @@ if (!empty($_SESSION['user_msg'])) {
                                                         <td><?php echo htmlspecialchars($u['email']); ?></td>
                                                         <td><?php echo htmlspecialchars($u['role'] ?? ''); ?></td>
                                                         <td>
-                                                            <a href="#" class="btn-view-user text-primary me-2 fs-5" data-id="<?php echo (int)$u['id']; ?>" title="View">
+                                                            <a href="#" class="btn-view-user text-secondary me-2 fs-5" data-id="<?php echo (int)$u['id']; ?>" title="View">
                                                                 <i class="feather-eye"></i>
                                                             </a>
                                                             <a href="#" class="btn-edit-user text-primary me-2 fs-5" data-id="<?php echo (int)$u['id']; ?>" title="Edit">
