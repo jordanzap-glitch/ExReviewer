@@ -87,7 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // If no upload errors, proceed to create account
             if (empty($error)) {
-                $hashed = password_hash($password, PASSWORD_DEFAULT);
+                // Store password as provided (no hashing)
+                $hashed = $password;
                 $insert = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, auth_path, year_level, sections_id, academicyears_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 mysqli_stmt_bind_param($insert, 'sssssssii', $lastname, $firstname, $middlename, $email, $hashed, $auth_path, $year_level, $section_id, $academicyears_id);
                 if (mysqli_stmt_execute($insert)) {
@@ -207,7 +208,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="row g-2">
                                 <div class="col-md-4 mb-4">
                                     <label class="form-label">Upload Image (optional)</label>
-                                    <input type="file" name="auth_path" class="form-control" accept="image/*">
+                                    <input type="file" id="auth_path" name="auth_path" class="form-control" accept="image/*">
+                                    <img id="authPreview" src="" alt="Preview" class="img-thumbnail mt-2" style="display:none;max-width:160px;" />
                                 </div>
                             </div>
 
@@ -432,6 +434,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         pwd.addEventListener('input', validate);
         cpwd.addEventListener('input', validate);
+
+        // Image preview for auth_path
+        var fileInput = document.getElementById('auth_path');
+        var preview = document.getElementById('authPreview');
+        if (fileInput && preview) {
+            fileInput.addEventListener('change', function () {
+                var f = this.files && this.files[0];
+                if (!f) {
+                    preview.style.display = 'none';
+                    preview.src = '';
+                    return;
+                }
+                var allowed = ['image/jpeg','image/png','image/gif'];
+                if (allowed.indexOf(f.type) === -1) {
+                    preview.style.display = 'none';
+                    preview.src = '';
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'inline-block';
+                };
+                reader.readAsDataURL(f);
+            });
+        }
     });
     </script>
     <?php if (!empty($show_modal)): ?>
