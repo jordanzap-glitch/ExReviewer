@@ -107,7 +107,17 @@ function add_user($conn, array $data) {
                 mysqli_stmt_close($r);
             }
         }
-        return ['success' => true, 'id' => (int)$new_id, 'full_name' => $full_name, 'email' => $email, 'role' => $role];
+        // fetch is_superadmin value from inserted row (default 0)
+        $is_sa = 0;
+        $sa = mysqli_prepare($conn, "SELECT is_superadmin FROM tbl_users WHERE id = ? LIMIT 1");
+        if ($sa) {
+            mysqli_stmt_bind_param($sa, 'i', $new_id);
+            mysqli_stmt_execute($sa);
+            $r = mysqli_stmt_get_result($sa);
+            if ($rr = mysqli_fetch_assoc($r)) $is_sa = (int)$rr['is_superadmin'];
+            mysqli_stmt_close($sa);
+        }
+        return ['success' => true, 'id' => (int)$new_id, 'full_name' => $full_name, 'email' => $email, 'role' => $role, 'is_superadmin' => $is_sa];
     }
     $err = mysqli_error($conn);
     mysqli_stmt_close($ins);
@@ -120,7 +130,7 @@ function add_user($conn, array $data) {
  */
 function get_users($conn) {
     $rows = [];
-    $sql = "SELECT u.id, TRIM(CONCAT(u.first_name, ' ', IFNULL(u.middle_name, ''), ' ', u.last_name)) AS full_name, u.email, ut.name AS role FROM tbl_users u LEFT JOIN tbl_usertypes ut ON u.usertypes_id = ut.id ORDER BY u.last_name, u.first_name";
+    $sql = "SELECT u.id, TRIM(CONCAT(u.first_name, ' ', IFNULL(u.middle_name, ''), ' ', u.last_name)) AS full_name, u.email, ut.name AS role, u.is_superadmin FROM tbl_users u LEFT JOIN tbl_usertypes ut ON u.usertypes_id = ut.id ORDER BY u.last_name, u.first_name";
     $res = mysqli_query($conn, $sql);
     if ($res) {
         while ($r = mysqli_fetch_assoc($res)) $rows[] = $r;
@@ -139,7 +149,7 @@ function get_user($conn, $id)
 {
     $id = (int)$id;
     if ($id <= 0) return ['success' => false, 'error' => 'Invalid id'];
-    $sql = "SELECT u.id, u.last_name, u.first_name, u.middle_name, u.email, u.year_level, u.sections_id, u.academicyears_id, u.usertypes_id,
+    $sql = "SELECT u.id, u.last_name, u.first_name, u.middle_name, u.email, u.year_level, u.sections_id, u.academicyears_id, u.usertypes_id, u.is_superadmin,
                    s.name AS section_name, ay.sy_start, ay.sy_end
             FROM tbl_users u
             LEFT JOIN tbl_sections s ON u.sections_id = s.id
@@ -222,6 +232,20 @@ function delete_user($conn, $id)
 {
     $id = (int)$id;
     if ($id <= 0) return ['success' => false, 'error' => 'Invalid id'];
+    // Prevent deleting a superadmin
+    $chk = mysqli_prepare($conn, "SELECT is_superadmin FROM tbl_users WHERE id = ? LIMIT 1");
+    if ($chk) {
+        mysqli_stmt_bind_param($chk, 'i', $id);
+        mysqli_stmt_execute($chk);
+        $res = mysqli_stmt_get_result($chk);
+        if ($row = mysqli_fetch_assoc($res)) {
+            if (!empty($row['is_superadmin'])) {
+                mysqli_stmt_close($chk);
+                return ['success' => false, 'error' => 'Cannot delete a super admin user.'];
+            }
+        }
+        mysqli_stmt_close($chk);
+    }
     $sql = "DELETE FROM tbl_users WHERE id = ? LIMIT 1";
     $stmt = mysqli_prepare($conn, $sql);
     if (!$stmt) return ['success' => false, 'error' => 'Database error (prepare failed).'];

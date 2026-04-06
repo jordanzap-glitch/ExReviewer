@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <?php
 session_start();
 
@@ -481,6 +482,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     });
     </script>
     <?php endif; ?>
+    <?php ob_end_flush(); ?>
 </body>
 
 </html>

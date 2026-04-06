@@ -144,7 +144,7 @@ if (!empty($_SESSION['section_msg'])) {
                                                     <tr>
                                                         <td><?php echo htmlspecialchars($sec['name']); ?></td>
                                                         <td>
-                                                            <a href="#" class="btn-view-section text-secondary me-2 fs-5" data-id="<?php echo (int)$sec['id']; ?>" title="View">
+                                                            <a href="#" class="btn-view-section text-info me-2 fs-5" data-id="<?php echo (int)$sec['id']; ?>" title="View">
                                                                 <i class="feather-eye"></i>
                                                             </a>
                                                             <a href="#" class="btn-edit-section text-primary me-2 fs-5" data-id="<?php echo (int)$sec['id']; ?>" title="Edit">

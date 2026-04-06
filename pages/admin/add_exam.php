@@ -285,7 +285,7 @@ if ($stmt3) {
                                                             <td><?php echo htmlspecialchars($q['subject_name'] ?? ''); ?></td>
                                                             <td><?php echo !empty($q['sy_start']) ? htmlspecialchars($q['sy_start'] . ' - ' . $q['sy_end']) : ''; ?></td>
                                                             <td>
-                                                                <a href="javascript:void(0);" class="text-secondary me-2 fs-5 view-question-btn" title="View" data-id="<?php echo (int)$q['id']; ?>">
+                                                                <a href="javascript:void(0);" class="text-info me-2 fs-5 view-question-btn" title="View" data-id="<?php echo (int)$q['id']; ?>">
                                                                     <i class="feather-eye"></i>
                                                                 </a>
                                                                 <a href="javascript:void(0);" class="text-primary me-2 fs-5 edit-question-btn" title="Edit" data-id="<?php echo (int)$q['id']; ?>">

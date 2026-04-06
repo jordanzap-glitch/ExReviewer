@@ -154,7 +154,7 @@ if (!empty($_SESSION['subject_msg'])) {
                                                                 <td><?php echo isset($sub['exam_duration']) ? (int)$sub['exam_duration'] : ''; ?></td>
                                                                 <td><?php echo isset($sub['question_items']) ? (int)$sub['question_items'] : ''; ?></td>
                                                                 <td>
-                                                            <a href="#" class="btn-view-subject text-secondary me-2 fs-5" data-id="<?php echo (int)$sub['id']; ?>" title="View">
+                                                            <a href="#" class="btn-view-subject text-info me-2 fs-5" data-id="<?php echo (int)$sub['id']; ?>" title="View">
                                                                 <i class="feather-eye"></i>
                                                             </a>
                                                             <a href="#" class="btn-edit-subject text-primary me-2 fs-5" data-id="<?php echo (int)$sub['id']; ?>" title="Edit">

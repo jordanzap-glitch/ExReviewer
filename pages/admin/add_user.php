@@ -183,15 +183,21 @@ if (!empty($_SESSION['user_msg'])) {
                                                         <td><?php echo htmlspecialchars($u['email']); ?></td>
                                                         <td><?php echo htmlspecialchars($u['role'] ?? ''); ?></td>
                                                         <td>
-                                                            <a href="#" class="btn-view-user text-secondary me-2 fs-5" data-id="<?php echo (int)$u['id']; ?>" title="View">
+                                                            <a href="#" class="btn-view-user text-info me-2 fs-5" data-id="<?php echo (int)$u['id']; ?>" title="View">
                                                                 <i class="feather-eye"></i>
                                                             </a>
                                                             <a href="#" class="btn-edit-user text-primary me-2 fs-5" data-id="<?php echo (int)$u['id']; ?>" title="Edit">
                                                                 <i class="feather-edit"></i>
                                                             </a>
-                                                            <a href="#" class="btn-delete-user text-danger fs-5" data-id="<?php echo (int)$u['id']; ?>" title="Delete">
-                                                                <i class="feather-trash-2"></i>
-                                                            </a>
+                                                            <?php if (!empty($u['is_superadmin'])): ?>
+                                                                <a href="#" class="text-muted fs-5" aria-disabled="true" title="Super admin cannot be deleted">
+                                                                    <i class="feather-trash-2"></i>
+                                                                </a>
+                                                            <?php else: ?>
+                                                                <a href="#" class="btn-delete-user text-danger fs-5" data-id="<?php echo (int)$u['id']; ?>" title="Delete">
+                                                                    <i class="feather-trash-2"></i>
+                                                                </a>
+                                                            <?php endif; ?>
                                                         </td>
                                                     </tr>
                                                     <?php
@@ -725,9 +731,14 @@ if (!empty($_SESSION['user_msg'])) {
                     var full = data.full_name || (fd.get('firstname') + ' ' + (fd.get('middlename') || '') + ' ' + fd.get('lastname'));
                     var email = data.email || fd.get('email');
                     var role = data.role || '';
+                    var is_sa = data.is_superadmin ? true : false;
                     var actionHtml = '<a href="#" class="btn-view-user text-primary me-2 fs-5" data-id="' + id + '" title="View"><i class="feather-eye"></i></a>' +
-                                     '<a href="#" class="btn-edit-user text-primary me-2 fs-5" data-id="' + id + '" title="Edit"><i class="feather-edit"></i></a>' +
-                                     '<a href="#" class="btn-delete-user text-danger fs-5" data-id="' + id + '" title="Delete"><i class="feather-trash-2"></i></a>';
+                                     '<a href="#" class="btn-edit-user text-primary me-2 fs-5" data-id="' + id + '" title="Edit"><i class="feather-edit"></i></a>';
+                    if (is_sa) {
+                        actionHtml += '<a href="#" class="text-muted fs-5" aria-disabled="true" title="Super admin cannot be deleted"><i class="feather-trash-2"></i></a>';
+                    } else {
+                        actionHtml += '<a href="#" class="btn-delete-user text-danger fs-5" data-id="' + id + '" title="Delete"><i class="feather-trash-2"></i></a>';
+                    }
 
                     try {
                         if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {

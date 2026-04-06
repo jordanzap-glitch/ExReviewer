@@ -161,7 +161,7 @@ $module_msg = null;
                                                         <td><?php $fp = $m['file_path'] ?? ''; $fn = $fp ? basename($fp) : ''; echo $fp ? '<a href="' . htmlspecialchars($fp) . '" target="_blank">' . htmlspecialchars($fn) . '</a>' : ''; ?></td>
                                                         <td><?php echo htmlspecialchars($m['subject_name'] ?? ''); ?></td>
                                                         <td>
-                                                            <a href="#" class="btn-view-module text-secondary me-2 fs-5" data-id="<?php echo (int)$m['id']; ?>" title="View">
+                                                            <a href="#" class="btn-view-module text-info me-2 fs-5" data-id="<?php echo (int)$m['id']; ?>" title="View">
                                                                 <i class="feather-eye"></i>
                                                             </a>
                                                             <a href="#" class="btn-edit-module text-primary me-2 fs-5" data-id="<?php echo (int)$m['id']; ?>" title="Edit">
