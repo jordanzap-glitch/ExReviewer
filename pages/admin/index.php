@@ -257,7 +257,7 @@ $stat_lowest = $score_stats['lowest'];
                                 <h5 class="card-title">Average Score (Overall)</h5>
                                 <div class="card-header-action">
                                     <div class="card-header-btn">
-                                        <div data-bs-toggle="tooltip" title="Delete">
+                                        <div data-bs-toggle="tooltip" title="Delete" hidden>
                                             <a href="javascript:void(0);" class="avatar-text avatar-xs bg-danger" data-bs-toggle="remove"> </a>
                                         </div>
                                         <div data-bs-toggle="tooltip" title="Refresh">
