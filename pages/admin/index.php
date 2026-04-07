@@ -273,7 +273,7 @@ $stat_lowest = $score_stats['lowest'];
                                                 <i class="feather-more-vertical"></i>
                                             </div>
                                         </a>
-                                        <div class="dropdown-menu dropdown-menu-end">
+                                        <div class="dropdown-menu dropdown-menu-end" hidden>
                                             <a href="javascript:void(0);" class="dropdown-item"><i class="feather-at-sign"></i>New</a>
                                             <a href="javascript:void(0);" class="dropdown-item"><i class="feather-calendar"></i>Event</a>
                                             <a href="javascript:void(0);" class="dropdown-item"><i class="feather-bell"></i>Snoozed</a>
