@@ -4,6 +4,21 @@ session_start();
 
 require_once __DIR__ . '/db/dbcon.php';
 
+// Image upload functionality removed — uploads are no longer accepted here.
+
+// Simple helper: insert user row, returns true on success
+function insert_user(mysqli $conn, string $lastname, string $firstname, string $middlename, string $email, string $password, ?string $auth_path, string $year_level, int $section_id, int $academicyears_id): bool
+{
+    $insert = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, auth_path, year_level, sections_id, academicyears_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    if (!$insert) return false;
+    // mysqli_stmt_bind_param does not accept a true NULL for params easily; store empty string when no path provided
+    $auth_param = $auth_path ?? '';
+    mysqli_stmt_bind_param($insert, 'sssssssii', $lastname, $firstname, $middlename, $email, $password, $auth_param, $year_level, $section_id, $academicyears_id);
+    $ok = mysqli_stmt_execute($insert);
+    mysqli_stmt_close($insert);
+    return (bool)$ok;
+}
+
 $error = '';
 $success = '';
 $show_modal = false;
@@ -53,52 +68,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             mysqli_stmt_close($stmt);
 
-            // Handle optional image upload
+            // Handle optional identification image upload: validate, save to pages/admin/, set $auth_path
             $auth_path = null;
-            if (isset($_FILES['auth_path']) && ($_FILES['auth_path']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
-                $file = $_FILES['auth_path'];
+            if (!empty($_FILES['auth_image']['name'])) {
+                $file = $_FILES['auth_image'];
                 if ($file['error'] === UPLOAD_ERR_OK) {
-                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                    $mime = finfo_file($finfo, $file['tmp_name']);
-                    finfo_close($finfo);
-                    $allowed = ['image/jpeg', 'image/png', 'image/gif'];
-                    if (!in_array($mime, $allowed)) {
-                        $error = 'Invalid image type. Allowed: jpg, png, gif.';
-                    } elseif ($file['size'] > 2 * 1024 * 1024) {
-                        $error = 'Image too large. Max 2MB.';
+                    $tmp = $file['tmp_name'];
+                    $imginfo = @getimagesize($tmp);
+                    if ($imginfo === false) {
+                        $error = 'Uploaded file is not a valid image.';
                     } else {
-                        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                        $targetDir = __DIR__ . '/assets/images/auth/identification/';
-                        if (!is_dir($targetDir)) {
-                            mkdir($targetDir, 0755, true);
-                        }
-                        $filename = uniqid('avatar_', true) . '.' . $ext;
-                        $targetPath = $targetDir . $filename;
-                        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                            $auth_path = 'assets/images/auth/identification/' . $filename;
+                        $mime = $imginfo['mime'];
+                        $allowed = ['image/jpeg', 'image/png', 'image/gif'];
+                        if (!in_array($mime, $allowed, true)) {
+                            $error = 'Invalid image type. Only JPG, PNG and GIF are allowed.';
+                        } elseif ($file['size'] > 2 * 1024 * 1024) {
+                            $error = 'Image too large. Maximum allowed size is 2MB.';
                         } else {
-                            $error = 'Failed to move uploaded file.';
+                            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                            $ext = preg_replace('/[^a-z0-9]/', '', $ext);
+                            if ($ext === '') $ext = ($mime === 'image/png' ? 'png' : ($mime === 'image/gif' ? 'gif' : 'jpg'));
+                            try {
+                                $newname = bin2hex(random_bytes(8)) . '_' . time() . '.' . $ext;
+                            } catch (Exception $e) {
+                                $newname = uniqid('img_', true) . '.' . $ext;
+                            }
+                            $upload_dir = __DIR__ . '/pages/admin/auth_image/';
+                            if (!is_dir($upload_dir)) {
+                                @mkdir($upload_dir, 0755, true);
+                            }
+                            $dest = $upload_dir . $newname;
+                            if (move_uploaded_file($tmp, $dest)) {
+                                // store relative path to be saved in DB
+                                $auth_path = 'pages/admin/auth_image/' . $newname;
+                            } else {
+                                $error = 'Failed to save uploaded image.';
+                            }
                         }
                     }
                 } else {
-                    $error = 'File upload error.';
+                    if ($file['error'] !== UPLOAD_ERR_NO_FILE) {
+                        $error = 'File upload error (code: ' . (int)$file['error'] . ').';
+                    }
                 }
             }
 
-            // If no upload errors, proceed to create account
             if (empty($error)) {
                 // Store password as provided (no hashing)
-                $hashed = $password;
-                $insert = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, auth_path, year_level, sections_id, academicyears_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                mysqli_stmt_bind_param($insert, 'sssssssii', $lastname, $firstname, $middlename, $email, $hashed, $auth_path, $year_level, $section_id, $academicyears_id);
-                if (mysqli_stmt_execute($insert)) {
+                $password_to_store = $password;
+                if (insert_user($conn, $lastname, $firstname, $middlename, $email, $password_to_store, $auth_path, $year_level, $section_id, $academicyears_id)) {
                     $success = 'Account created successfully.';
-                    mysqli_stmt_close($insert);
                     $show_modal = true; // show modal then redirect on client
                 } else {
                     $error = 'Registration failed. Please try again.';
-                    mysqli_stmt_close($insert);
-                    // If file was uploaded but DB insert failed, optionally unlink the file? skipping for now
                 }
             }
         }
@@ -205,12 +227,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                             </div>
 
-                            <div class="row g-2">
-                                <div class="col-md-4 mb-4">
-                                    <label class="form-label">Upload Image (optional)</label>
-                                    <input type="file" id="auth_path" name="auth_path" class="form-control" accept="image/*">
-                                    <img id="authPreview" src="" alt="Preview" class="img-thumbnail mt-2" style="display:none;max-width:160px;" />
+                            <div class="mb-4 text-center">
+                                <label for="authImage" class="form-label d-block mb-2">Identification (optional)</label>
+                                <div style="max-width:420px;margin:0 auto 0.75rem;">
+                                    <div style="width:100%;height:180px;border:1px solid #ddd;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f8f9fa;">
+                                        <img id="authPreview" src="assets/images/psu.png" alt="Preview" style="width:100%;height:100%;object-fit:cover;display:block">
+                                    </div>
                                 </div>
+                                <div class="d-flex justify-content-center">
+                                    <input type="file" name="auth_image" id="authImage" accept="image/*" class="form-control w-50">
+                                </div>
+                                <div class="form-text">Allowed: JPG, PNG, GIF. Max 2MB.</div>
                             </div>
 
                             <div class="mb-4 generate-pass">
@@ -435,28 +462,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         pwd.addEventListener('input', validate);
         cpwd.addEventListener('input', validate);
 
-        // Image preview for auth_path
-        var fileInput = document.getElementById('auth_path');
-        var preview = document.getElementById('authPreview');
-        if (fileInput && preview) {
-            fileInput.addEventListener('change', function () {
+        // Image preview and client-side checks for identification upload
+        var authInput = document.getElementById('authImage');
+        var authPreview = document.getElementById('authPreview');
+        if (authInput && authPreview) {
+            authInput.addEventListener('change', function () {
                 var f = this.files && this.files[0];
                 if (!f) {
-                    preview.style.display = 'none';
-                    preview.src = '';
+                    authPreview.src = 'assets/images/psu.png';
                     return;
                 }
-                var allowed = ['image/jpeg','image/png','image/gif'];
-                if (allowed.indexOf(f.type) === -1) {
-                    preview.style.display = 'none';
-                    preview.src = '';
+                if (!f.type.startsWith('image/')) {
+                    alert('Please select an image file.');
+                    this.value = '';
+                    return;
+                }
+                if (f.size > 2 * 1024 * 1024) {
+                    alert('Image too large. Max 2MB.');
+                    this.value = '';
                     return;
                 }
                 var reader = new FileReader();
-                reader.onload = function (e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'inline-block';
-                };
+                reader.onload = function (evt) { authPreview.src = evt.target.result; };
                 reader.readAsDataURL(f);
             });
         }

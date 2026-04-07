@@ -4,28 +4,57 @@
 require_once __DIR__ . '/../../db/dbcon.php';
 // (Removed: subjects backend include and server-side add_subject handler — not used by approvals)
 
-// Handle approving users (set is_active = 1)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_user'])) {
+// Handle approving or denying users (set is_active = 1 or 0)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['approval_action'])) {
+    $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     if (empty($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
-        $_SESSION['subject_msg'] = ['type' => 'danger', 'text' => 'Invalid CSRF token. Please try again.'];
+        $msg = 'Invalid CSRF token. Please try again.';
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $msg]);
+            exit;
+        }
+        $_SESSION['subject_msg'] = ['type' => 'danger', 'text' => $msg];
         header('Location: ' . $_SERVER['REQUEST_URI']);
         exit;
     }
     $user_id = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
+    $action = $_POST['approval_action'];
     if ($user_id > 0) {
-        $up = mysqli_prepare($conn, "UPDATE tbl_users SET is_active = 1 WHERE id = ?");
-        mysqli_stmt_bind_param($up, 'i', $user_id);
+        $new_status = ($action === 'approve') ? 1 : 0;
+        $up = mysqli_prepare($conn, "UPDATE tbl_users SET is_active = ? WHERE id = ?");
+        mysqli_stmt_bind_param($up, 'ii', $new_status, $user_id);
         if (mysqli_stmt_execute($up)) {
-            $_SESSION['subject_msg'] = ['type' => 'success', 'text' => 'Student approved successfully.'];
+            $msg = ($new_status === 1) ? 'Student approved successfully.' : 'Student denied successfully.';
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => $msg, 'new_status' => $new_status]);
+                exit;
+            }
+            $_SESSION['subject_msg'] = ['type' => 'success', 'text' => $msg];
         } else {
-            $_SESSION['subject_msg'] = ['type' => 'danger', 'text' => 'Failed to approve student.'];
+            $msg = 'Failed to update student status.';
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            $_SESSION['subject_msg'] = ['type' => 'danger', 'text' => $msg];
         }
         mysqli_stmt_close($up);
     } else {
-        $_SESSION['subject_msg'] = ['type' => 'danger', 'text' => 'Invalid user ID.'];
+        $msg = 'Invalid user ID.';
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $msg]);
+            exit;
+        }
+        $_SESSION['subject_msg'] = ['type' => 'danger', 'text' => $msg];
     }
-    header('Location: ' . $_SERVER['REQUEST_URI']);
-    exit;
+    if (!$is_ajax) {
+        header('Location: ' . $_SERVER['REQUEST_URI']);
+        exit;
+    }
 }
 
 // If a message from a previous POST exists, pull it for display (PRG)
@@ -141,13 +170,29 @@ if (!empty($_SESSION['subject_msg'])) {
                                                 if ($ures && mysqli_num_rows($ures) > 0) {
                                                     while ($u = mysqli_fetch_assoc($ures)) {
                                                         $name = trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
+                                                        $img_src = '';
                                                         ?>
                                                         <tr>
                                                             <td><?php echo htmlspecialchars($name); ?></td>
                                                             <td><?php echo htmlspecialchars($u['email'] ?? ''); ?></td>
                                                             <td>
                                                                 <?php if (!empty($u['auth_path'])): ?>
-                                                                    <img src="<?php echo htmlspecialchars($u['auth_path']); ?>" alt="ID" style="height:60px;object-fit:cover;border-radius:4px;">
+                                                                    <?php
+                                                                    // Normalize stored path and make it relative to this admin page.
+                                                                    $stored = $u['auth_path'];
+                                                                    $img_src = '';
+                                                                    // If stored path starts with 'pages/admin/', remove that prefix so the path is relative to this folder
+                                                                    if (strpos($stored, 'pages/admin/') === 0) {
+                                                                        $img_src = substr($stored, strlen('pages/admin/'));
+                                                                    } elseif (strpos($stored, '/pages/admin/') === 0) {
+                                                                        $img_src = substr($stored, strlen('/pages/admin/'));
+                                                                    } else {
+                                                                        // fallback: use stored path as-is
+                                                                        $img_src = $stored;
+                                                                    }
+                                                                    // ensure proper escaping when output
+                                                                    ?>
+                                                                    <img src="<?php echo htmlspecialchars($img_src); ?>" alt="ID" style="height:60px;object-fit:cover;border-radius:4px;">
                                                                 <?php else: ?>
                                                                     <span class="text-muted">No ID</span>
                                                                 <?php endif; ?>
@@ -164,13 +209,15 @@ if (!empty($_SESSION['subject_msg'])) {
                                                             </td>
                                                             <td>
                                                                 <?php if ($is_active === 0): ?>
-                                                                    <form method="post" style="display:inline-block;">
-                                                                        <input type="hidden" name="user_id" value="<?php echo (int)$u['id']; ?>">
-                                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
-                                                                        <button type="submit" name="approve_user" class="btn btn-success btn-sm">Approve</button>
-                                                                    </form>
+                                                                    <button type="button" class="btn btn-success btn-sm approve-btn"
+                                                                        data-user-id="<?php echo (int)$u['id']; ?>"
+                                                                        data-img-src="<?php echo htmlspecialchars($img_src); ?>"
+                                                                    >Approve</button>
                                                                 <?php else: ?>
-                                                                    <button class="btn btn-secondary btn-sm" disabled>Approved</button>
+                                                                    <button type="button" class="btn btn-danger btn-sm deny-btn"
+                                                                        data-user-id="<?php echo (int)$u['id']; ?>"
+                                                                        data-img-src="<?php echo htmlspecialchars($img_src); ?>"
+                                                                    >Deny</button>
                                                                 <?php endif; ?>
                                                             </td>
                                                         </tr>
@@ -333,6 +380,143 @@ if (!empty($_SESSION['subject_msg'])) {
             paging: true,
             searching: true
         });
+    });
+    </script>
+    <!-- Approval modal -->
+    <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="post" class="modal-content" id="approveForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Approval</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="approveImageWrapper" style="max-height:360px;overflow:hidden;">
+                        <img id="approveImagePreview" src="" alt="ID Preview" style="width:100%;height:auto;object-fit:cover;border-radius:6px;">
+                    </div>
+                    <p class="mt-3 text-muted" id="noImageText" style="display:none;">No identification image provided.</p>
+                </div>
+                <div class="modal-footer">
+                    <input type="hidden" name="user_id" id="approveUserId" value="">
+                    <input type="hidden" name="approval_action" id="approvalAction" value="approve">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="approveConfirmBtn" class="btn btn-success">Approve User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var approveBtns = document.querySelectorAll('.approve-btn');
+            var denyBtns = document.querySelectorAll('.deny-btn');
+            var approveModalEl = document.getElementById('approveModal');
+            var approveImage = document.getElementById('approveImagePreview');
+            var noImageText = document.getElementById('noImageText');
+            var approveUserId = document.getElementById('approveUserId');
+            var approvalActionInput = document.getElementById('approvalAction');
+            var approveConfirmBtn = document.getElementById('approveConfirmBtn');
+            var bsApproveModal = null;
+            if (approveModalEl) bsApproveModal = new bootstrap.Modal(approveModalEl);
+
+            function openApproveModal(uid, img, action) {
+                approveUserId.value = uid;
+                if (img) {
+                    approveImage.src = img;
+                    approveImage.style.display = '';
+                    noImageText.style.display = 'none';
+                } else {
+                    approveImage.src = '';
+                    approveImage.style.display = 'none';
+                    noImageText.style.display = '';
+                }
+                if (approvalActionInput) approvalActionInput.value = action;
+                if (approveConfirmBtn) {
+                    if (action === 'approve') {
+                        approveConfirmBtn.textContent = 'Approve User';
+                        approveConfirmBtn.classList.remove('btn-danger');
+                        approveConfirmBtn.classList.add('btn-success');
+                    } else {
+                        approveConfirmBtn.textContent = 'Deny User';
+                        approveConfirmBtn.classList.remove('btn-success');
+                        approveConfirmBtn.classList.add('btn-danger');
+                    }
+                }
+                if (bsApproveModal) bsApproveModal.show();
+            }
+
+                // bind click handlers
+                function bindActionButtons() {
+                    document.querySelectorAll('.approve-btn').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var uid = this.getAttribute('data-user-id') || '';
+                            var img = this.getAttribute('data-img-src') || '';
+                            openApproveModal(uid, img, 'approve');
+                        };
+                    });
+                    document.querySelectorAll('.deny-btn').forEach(function (btn) {
+                        btn.onclick = function () {
+                            var uid = this.getAttribute('data-user-id') || '';
+                            var img = this.getAttribute('data-img-src') || '';
+                            openApproveModal(uid, img, 'deny');
+                        };
+                    });
+                }
+
+                bindActionButtons();
+
+                // AJAX submit for approve/deny to avoid page reload
+                var approveForm = document.getElementById('approveForm');
+                if (approveForm) {
+                    approveForm.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        var fd = new FormData(approveForm);
+                        fetch(window.location.href, {
+                            method: 'POST',
+                            body: fd,
+                            credentials: 'same-origin',
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        }).then(function (res) { return res.json(); }).then(function (data) {
+                            if (!data) return;
+                            if (data.success) {
+                                var uid = fd.get('user_id');
+                                var newStatus = data.new_status;
+                                // find the row for this user
+                                var triggerBtn = document.querySelector('[data-user-id="' + uid + '"]');
+                                if (triggerBtn) {
+                                    var row = triggerBtn.closest('tr');
+                                    if (row) {
+                                        // update status cell (4th column)
+                                        var statusCell = row.querySelectorAll('td')[3];
+                                        if (statusCell) {
+                                            if (parseInt(newStatus, 10) === 1) statusCell.innerHTML = '<span class="badge bg-success">Active</span>';
+                                            else statusCell.innerHTML = '<span class="badge bg-warning text-dark">Pending</span>';
+                                        }
+                                        // update action cell (5th column)
+                                        var actionCell = row.querySelectorAll('td')[4];
+                                        var imgEl = row.querySelector('td:nth-child(3) img');
+                                        var imgSrc = imgEl ? imgEl.getAttribute('src') : '';
+                                        if (actionCell) {
+                                            if (parseInt(newStatus, 10) === 1) {
+                                                actionCell.innerHTML = '<button type="button" class="btn btn-danger btn-sm deny-btn" data-user-id="' + uid + '" data-img-src="' + (imgSrc || '') + '">Deny</button>';
+                                            } else {
+                                                actionCell.innerHTML = '<button type="button" class="btn btn-success btn-sm approve-btn" data-user-id="' + uid + '" data-img-src="' + (imgSrc || '') + '">Approve</button>';
+                                            }
+                                        }
+                                        bindActionButtons();
+                                    }
+                                }
+                                if (typeof showToast === 'function') showToast('success', data.message || 'Updated');
+                                if (bsApproveModal) bsApproveModal.hide();
+                            } else {
+                                if (typeof showToast === 'function') showToast('danger', data.message || 'Failed');
+                            }
+                        }).catch(function (err) {
+                            if (typeof showToast === 'function') showToast('danger', 'Request failed');
+                        });
+                    });
+                }
     });
     </script>
     <script>
