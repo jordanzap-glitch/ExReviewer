@@ -231,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <label for="authImage" class="form-label d-block mb-2">Identification (optional)</label>
                                 <div style="max-width:420px;margin:0 auto 0.75rem;">
                                     <div style="width:100%;height:180px;border:1px solid #ddd;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f8f9fa;">
-                                        <img id="authPreview" src="assets/images/psu.png" alt="Preview" style="width:100%;height:100%;object-fit:cover;display:block">
+                                        <img id="authPreview" src="assets/images/default.png" alt="Preview" style="width:100%;height:100%;object-fit:cover;display:block">
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-center">
