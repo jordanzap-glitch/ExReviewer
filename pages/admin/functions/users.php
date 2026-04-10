@@ -88,10 +88,13 @@ function add_user($conn, array $data) {
         }
     }
 
-    // prepare insert including usertypes_id
-    $ins = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, year_level, sections_id, academicyears_id, usertypes_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    // determine is_active flag: allow caller to override, default to 1 (active)
+    $is_active = isset($data['is_active']) ? (int)$data['is_active'] : 1;
+
+    // prepare insert including usertypes_id and is_active
+    $ins = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, year_level, sections_id, academicyears_id, usertypes_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     if (!$ins) return ['success' => false, 'error' => 'Failed to prepare insert statement'];
-    mysqli_stmt_bind_param($ins, 'ssssssiii', $last, $first, $middle, $email, $hashed, $year_level, $section_id, $academicyears_id, $usertype_id);
+    mysqli_stmt_bind_param($ins, 'ssssssiiii', $last, $first, $middle, $email, $hashed, $year_level, $section_id, $academicyears_id, $usertype_id, $is_active);
     if (mysqli_stmt_execute($ins)) {
         $new_id = mysqli_insert_id($conn);
         mysqli_stmt_close($ins);

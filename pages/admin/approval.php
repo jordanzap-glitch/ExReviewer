@@ -118,7 +118,7 @@ if (!empty($_SESSION['subject_msg'])) {
                         <h5 class="m-b-10">User Approvals</h5>
                     </div>
                     <ul class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="index.html">Home</a></li>
+                        <li class="breadcrumb-item"><a href="index.php">Home</a></li>
                         <li class="breadcrumb-item">Approvals</li>
                     </ul>
                 </div>
@@ -165,7 +165,8 @@ if (!empty($_SESSION['subject_msg'])) {
                                                 <?php
                                                 // List users pending approval (is_active = 0)
                                                 // show both pending and active users
-                                                $uq = "SELECT id, first_name, last_name, email, auth_path, is_active FROM tbl_users ORDER BY is_active DESC, id DESC";
+                                                // Exclude super-admin users (is_superadmin = 1)
+                                                $uq = "SELECT id, first_name, last_name, email, auth_path, is_active FROM tbl_users WHERE COALESCE(is_superadmin,0) = 0 ORDER BY is_active DESC, id DESC";
                                                 $ures = mysqli_query($conn, $uq);
                                                 if ($ures && mysqli_num_rows($ures) > 0) {
                                                     while ($u = mysqli_fetch_assoc($ures)) {

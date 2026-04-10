@@ -102,7 +102,7 @@ if (!empty($_SESSION['user_id'])) {
                     </div>
                     
          
-                    <div class="dropdown nxl-h-item">
+                    <div class="dropdown nxl-h-item no-hover">
                             <a href="javascript:void(0);" data-bs-toggle="dropdown" role="button" data-bs-auto-close="outside">
                             <img src="<?php echo htmlspecialchars($header_user_image); ?>" alt="user-image" class="img-fluid user-avtar me-0" />
                         </a>
@@ -136,3 +136,60 @@ if (!empty($_SESSION['user_id'])) {
             <!--! [End] Header Right !-->
         </div>
     </header>
+
+    <!-- Logout confirmation modal -->
+    <div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Logout</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure? Do you really want to logout?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmLogoutBtn" class="btn btn-danger">Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Prevent hover-based opening for the profile dropdown; allow click only.
+    (function(){
+        try {
+            var dd = document.querySelector('.nxl-header .header-wrapper .dropdown.no-hover');
+            if (!dd) return;
+            // stop hover events before any other handlers (capture phase)
+            ['mouseover','mouseenter','mouseleave','mouseout'].forEach(function(evt){
+                dd.addEventListener(evt, function(e){
+                    e.stopImmediatePropagation();
+                }, true);
+            });
+        } catch (e) { console && console.warn && console.warn(e); }
+    })();
+
+    // Intercept logout links and show confirmation modal
+    document.addEventListener('DOMContentLoaded', function () {
+        var logoutLinks = document.querySelectorAll('a[href$="logout.php"]');
+        var modalEl = document.getElementById('logoutConfirmModal');
+        var confirmBtn = document.getElementById('confirmLogoutBtn');
+        var pendingHref = null;
+        if (!modalEl) return;
+        logoutLinks.forEach(function (a) {
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                pendingHref = this.getAttribute('href');
+                var bs = bootstrap.Modal.getOrCreateInstance(modalEl);
+                bs.show();
+            });
+        });
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', function () {
+                if (pendingHref) window.location.href = pendingHref;
+            });
+        }
+    });
+    </script>

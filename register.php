@@ -7,13 +7,13 @@ require_once __DIR__ . '/db/dbcon.php';
 // Image upload functionality removed — uploads are no longer accepted here.
 
 // Simple helper: insert user row, returns true on success
-function insert_user(mysqli $conn, string $lastname, string $firstname, string $middlename, string $email, string $password, ?string $auth_path, string $year_level, int $section_id, int $academicyears_id): bool
+function insert_user(mysqli $conn, string $lastname, string $firstname, string $middlename, string $email, string $password, ?string $auth_path, string $year_level, int $section_id, int $academicyears_id, int $usertypes_id = 2): bool
 {
-    $insert = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, auth_path, year_level, sections_id, academicyears_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $insert = mysqli_prepare($conn, "INSERT INTO tbl_users (last_name, first_name, middle_name, email, password, auth_path, year_level, sections_id, academicyears_id, usertypes_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     if (!$insert) return false;
     // mysqli_stmt_bind_param does not accept a true NULL for params easily; store empty string when no path provided
     $auth_param = $auth_path ?? '';
-    mysqli_stmt_bind_param($insert, 'sssssssii', $lastname, $firstname, $middlename, $email, $password, $auth_param, $year_level, $section_id, $academicyears_id);
+    mysqli_stmt_bind_param($insert, 'sssssssiii', $lastname, $firstname, $middlename, $email, $password, $auth_param, $year_level, $section_id, $academicyears_id, $usertypes_id);
     $ok = mysqli_stmt_execute($insert);
     mysqli_stmt_close($insert);
     return (bool)$ok;

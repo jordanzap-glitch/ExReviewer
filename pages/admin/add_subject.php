@@ -1,7 +1,5 @@
-<?php include "includes/init.php"; ?>
-
-
 <?php
+include "includes/init.php";
 // DB and functions
 require_once __DIR__ . '/../../db/dbcon.php';
 require_once __DIR__ . '/functions/subjects.php';
@@ -14,8 +12,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_subject'])) {
         header('Location: ' . $_SERVER['REQUEST_URI']);
         exit;
     }
-    $name = $_POST['subject_name'] ?? '';
-    $code = $_POST['subject_code'] ?? '';
+    // Accept either AJAX field names (name/code) or fallback legacy names (subject_name/subject_code)
+    $name = $_POST['name'] ?? $_POST['subject_name'] ?? '';
+    $code = $_POST['code'] ?? $_POST['subject_code'] ?? '';
     $exam_duration = isset($_POST['exam_duration']) && $_POST['exam_duration'] !== '' ? (int)$_POST['exam_duration'] : null;
     $question_items = isset($_POST['question_items']) && $_POST['question_items'] !== '' ? (int)$_POST['question_items'] : null;
     $res = add_subject($conn, $name, $code, $exam_duration, $question_items);
@@ -486,11 +485,11 @@ if (!empty($_SESSION['subject_msg'])) {
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="subject_name" class="form-label">Subject Name</label>
-                        <input type="text" id="subject_name" name="subject_name" class="form-control" placeholder="Subject name" required>
+                        <input type="text" id="subject_name" name="name" class="form-control" placeholder="Subject name" required>
                     </div>
                     <div class="mb-3">
                         <label for="subject_code" class="form-label">Subject Code</label>
-                        <input type="text" id="subject_code" name="subject_code" class="form-control" placeholder="Subject code" required>
+                        <input type="text" id="subject_code" name="code" class="form-control" placeholder="Subject code" required>
                     </div>
                     <div class="mb-3">
                         <label for="subject_duration" class="form-label">Exam Duration (minutes)</label>
@@ -517,6 +516,15 @@ if (!empty($_SESSION['subject_msg'])) {
 
         function ajaxPost(fd) {
             return fetch(baseUrl, { method: 'POST', body: fd }).then(function (res) {
+                var ct = res.headers.get('content-type') || '';
+                if (!res.ok) return res.text().then(function(t){ throw new Error(t || ('HTTP ' + res.status)); });
+                if (ct.indexOf('application/json') === -1) return res.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
+                return res.json();
+            });
+        }
+
+        function fetchJson(url, opts) {
+            return fetch(url, opts).then(function (res) {
                 var ct = res.headers.get('content-type') || '';
                 if (!res.ok) return res.text().then(function(t){ throw new Error(t || ('HTTP ' + res.status)); });
                 if (ct.indexOf('application/json') === -1) return res.text().then(function(t){ throw new Error(t || 'Unexpected response'); });
@@ -592,12 +600,12 @@ if (!empty($_SESSION['subject_msg'])) {
                 var fd = new FormData(form);
                 fd.append('action', 'add');
                 if (!fd.has('csrf_token')) fd.append('csrf_token', csrfToken);
-                ajaxPost(fd).then(function (resp) {
+                fetchJson(baseUrl, { method: 'POST', body: fd }).then(function (resp) {
                     if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Add failed'); return; }
                     showToast('success', 'Subject added');
                     var id = resp.id || (resp.data && resp.data.id) || '';
-                    var name = (resp.data && resp.data.name) || fd.get('subject_name');
-                    var code = (resp.data && resp.data.code) || fd.get('subject_code');
+                    var name = (resp.data && resp.data.name) || fd.get('name') || fd.get('subject_name');
+                    var code = (resp.data && resp.data.code) || fd.get('code') || fd.get('subject_code');
                     var duration = (resp.data && typeof resp.data.exam_duration !== 'undefined') ? resp.data.exam_duration : (fd.get('exam_duration') || '');
                     var items = (resp.data && typeof resp.data.question_items !== 'undefined') ? resp.data.question_items : (fd.get('question_items') || '');
                     var actionHtml = '<a href="#" class="btn-view-subject text-primary me-2 fs-5" data-id="' + id + '" title="View"><i class="feather-eye"></i></a>' +
@@ -619,14 +627,9 @@ if (!empty($_SESSION['subject_msg'])) {
                         }
                     } catch (err) { console.error(err); }
 
-                    // hide modal and reset
-                    var mEl = document.getElementById('createSubjectModal');
-                    if (mEl) {
-                        var inst = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl);
-                        inst.hide();
-                    }
+                    var mEl = document.getElementById('createSubjectModal'); if (mEl) { var inst = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl); inst.hide(); }
                     form.reset();
-                }).catch(function () { showToast('danger', 'Request failed'); });
+                }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
             });
         }
     });

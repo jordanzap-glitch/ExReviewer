@@ -101,7 +101,7 @@ $module_msg = null;
                         <h5 class="m-b-10">Modules</h5>
                     </div>
                     <ul class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="index.html">Home</a></li>
+                        <li class="breadcrumb-item"><a href="index.php">Home</a></li>
                         <li class="breadcrumb-item">Modules</li>
                     </ul>
                 </div>
@@ -158,7 +158,7 @@ $module_msg = null;
                                                 foreach ($modules as $m) {
                                                     ?>
                                                     <tr>
-                                                        <td><?php $fp = $m['file_path'] ?? ''; $fn = $fp ? basename($fp) : ''; echo $fp ? '<a href="' . htmlspecialchars($fp) . '" target="_blank">' . htmlspecialchars($fn) . '</a>' : ''; ?></td>
+                                                        <td><?php $fp = $m['file_path'] ?? ''; $fn = $fp ? basename($fp) : ''; echo $fp ? htmlspecialchars($fn) : ''; ?></td>
                                                         <td><?php echo htmlspecialchars($m['subject_name'] ?? ''); ?></td>
                                                         <td>
                                                             <a href="#" class="btn-view-module text-info me-2 fs-5" data-id="<?php echo (int)$m['id']; ?>" title="View">
@@ -347,6 +347,9 @@ $module_msg = null;
                     <div class="modal-body">
                         <p><strong>Name:</strong> <span id="v_module_name"></span></p>
                         <p><strong>Subject:</strong> <span id="v_module_section"></span></p>
+                        <div id="v_module_preview" class="mt-3 text-center">
+                            <!-- File preview (image/pdf/link) will be injected here -->
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -444,6 +447,39 @@ $module_msg = null;
                         var fn = fp ? fp.split('/').pop() : '';
                         document.getElementById('v_module_name').textContent = fn || '';
                         document.getElementById('v_module_section').textContent = d.subject_name || '';
+
+                        // Build preview from ../student/learning_modules/<filename>
+                        var preview = document.getElementById('v_module_preview');
+                        if (preview) preview.innerHTML = '';
+                        if (fp && fn) {
+                            var name = fn;
+                            var previewPath = '../student/learning_modules/' + encodeURIComponent(name);
+                            var ext = (name.split('.').pop() || '').toLowerCase();
+                            if (['png','jpg','jpeg','gif','webp','svg'].indexOf(ext) !== -1) {
+                                var img = document.createElement('img');
+                                img.src = previewPath;
+                                img.style.maxWidth = '100%';
+                                img.style.height = 'auto';
+                                img.style.borderRadius = '6px';
+                                preview.appendChild(img);
+                            } else if (ext === 'pdf') {
+                                var iframe = document.createElement('iframe');
+                                iframe.src = previewPath;
+                                iframe.style.width = '100%';
+                                iframe.style.height = '600px';
+                                iframe.frameBorder = 0;
+                                preview.appendChild(iframe);
+                            } else {
+                                var a = document.createElement('a');
+                                a.href = previewPath;
+                                a.target = '_blank';
+                                a.textContent = 'Open / download file';
+                                preview.appendChild(a);
+                            }
+                        } else if (preview) {
+                            preview.textContent = 'No file available.';
+                        }
+
                         var m = new bootstrap.Modal(document.getElementById('viewModuleModal'));
                         m.show();
                     }).catch(function(err){ showToast('danger', err.message || 'Request failed'); });
@@ -524,14 +560,14 @@ $module_msg = null;
                     try {
                         if (window.jQuery && $.fn.dataTable && $.fn.dataTable.isDataTable('#myTable')) {
                             var dt = $('#myTable').DataTable();
-                            var linkHtml = name ? '<a href="' + (filePath || ('learning_modules/' + name)) + '" target="_blank">' + name + '</a>' : '';
+                            var linkHtml = name ? name : '';
                             var newRow = dt.row.add([linkHtml, sectionName, actionHtml]).draw(false).node();
                             bindRowButtons(newRow);
                         } else {
                             var tbody = document.querySelector('#myTable tbody');
                             if (tbody) {
                                 var tr = document.createElement('tr');
-                                var linkHtml = name ? '<a href="' + (filePath || ('learning_modules/' + name)) + '" target="_blank">' + name + '</a>' : '';
+                                var linkHtml = name ? name : '';
                                 tr.innerHTML = '<td>' + (linkHtml || '') + '</td><td>' + (sectionName || '') + '</td><td>' + actionHtml + '</td>';
                                 tbody.appendChild(tr);
                                 bindRowButtons(tr);
@@ -568,8 +604,8 @@ $module_msg = null;
                                     if (resp && resp.data && resp.data.file_path) newName = resp.data.file_path.split('/').pop();
                                     else { var fobj = fd.get('module_file'); if (fobj && fobj.name) newName = fobj.name; }
                                     if (newName) {
-                                        var newLink = '<a href="' + ((resp && resp.data && resp.data.file_path) || ('learning_modules/' + newName)) + '" target="_blank">' + newName + '</a>';
-                                        tds[0].innerHTML = newLink;
+                                        var newLink = newName;
+                                            tds[0].innerHTML = newLink;
                                     }
                                     var secOpt = document.getElementById('e_module_section');
                                     var secText = '';

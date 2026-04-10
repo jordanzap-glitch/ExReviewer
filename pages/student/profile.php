@@ -17,10 +17,19 @@ function set_profile_msg($type, $text) {
     $_SESSION['profile_msg'] = ['type' => $type, 'text' => $text];
 }
 
+// Helper: respond JSON and exit (for AJAX requests)
+function respond_json($data) {
+    header('Content-Type: application/json');
+    echo json_encode($data);
+    exit;
+}
+
 // Handle profile update (names + optional image)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile') {
     $token = $_POST['csrf_token'] ?? '';
+    $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     if (!function_exists('verify_csrf_token') || !verify_csrf_token($token)) {
+        if ($is_ajax) respond_json(['success' => false, 'message' => 'Invalid CSRF token.']);
         set_profile_msg('danger', 'Invalid CSRF token.');
         header('Location: ' . $_SERVER['REQUEST_URI']); exit;
     }
@@ -30,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $want_update_image = (!empty($_FILES['profile_image']) && $_FILES['profile_image']['error'] !== UPLOAD_ERR_NO_FILE);
 
     if (!$want_update_names && !$want_update_image) {
+        if ($is_ajax) respond_json(['success' => true, 'message' => 'No changes submitted.']);
         set_profile_msg('info', 'No changes submitted.');
         header('Location: ' . $_SERVER['REQUEST_URI']); exit;
     }
@@ -44,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $middle = trim($_POST['middle_name'] ?? '');
         $last = trim($_POST['last_name'] ?? '');
         if ($first === '' || $last === '') {
+            if ($is_ajax) respond_json(['success' => false, 'message' => 'First and last name are required to update name.']);
             set_profile_msg('danger', 'First and last name are required to update name.');
             header('Location: ' . $_SERVER['REQUEST_URI']); exit;
         }
@@ -66,12 +77,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $f = $_FILES['profile_image'];
         if ($f['error'] !== UPLOAD_ERR_OK) {
+            if ($is_ajax) respond_json(['success' => false, 'message' => 'Error uploading file.']);
             set_profile_msg('danger', 'Error uploading file.');
             header('Location: ' . $_SERVER['REQUEST_URI']); exit;
         }
         $allowed = ['jpg','jpeg','png','gif'];
         $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
         if (!in_array($ext, $allowed, true)) {
+            if ($is_ajax) respond_json(['success' => false, 'message' => 'Unsupported image type.']);
             set_profile_msg('danger', 'Unsupported image type.');
             header('Location: ' . $_SERVER['REQUEST_URI']); exit;
         }
@@ -80,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $fname = 'user_' . $uid . '_' . time() . '.' . $ext;
         $dest = $upload_dir . $fname;
         if (!move_uploaded_file($f['tmp_name'], $dest)) {
+            if ($is_ajax) respond_json(['success' => false, 'message' => 'Failed to save uploaded image.']);
             set_profile_msg('danger', 'Failed to save uploaded image.');
             header('Location: ' . $_SERVER['REQUEST_URI']); exit;
         }
@@ -101,25 +115,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, $types, ...$values);
             if (mysqli_stmt_execute($stmt)) {
+                // prepare response data for AJAX
+                if (!empty($new_image_path)) {
+                    $resp = ['success' => true, 'message' => 'Profile updated successfully.', 'image_path' => $new_image_path];
+                } else {
+                    $resp = ['success' => true, 'message' => 'Profile updated successfully.'];
+                }
+                if (!empty($first) || !empty($last) || isset($middle)) {
+                    $resp['first_name'] = $first ?? null;
+                    $resp['middle_name'] = $middle ?? null;
+                    $resp['last_name'] = $last ?? null;
+                }
+                if ($is_ajax) respond_json($resp);
                 set_profile_msg('success', 'Profile updated successfully.');
             } else {
+                if ($is_ajax) respond_json(['success' => false, 'message' => 'Failed to update profile.']);
                 set_profile_msg('danger', 'Failed to update profile.');
             }
             mysqli_stmt_close($stmt);
         } else {
+            if ($is_ajax) respond_json(['success' => false, 'message' => 'Database error preparing update.']);
             set_profile_msg('danger', 'Database error preparing update.');
         }
     } else {
+        if ($is_ajax) respond_json(['success' => true, 'message' => 'No changes to save.']);
         set_profile_msg('info', 'No changes to save.');
     }
 
-    header('Location: ' . $_SERVER['REQUEST_URI']); exit;
+    if (!$is_ajax) {
+        header('Location: ' . $_SERVER['REQUEST_URI']); exit;
+    }
 }
 
 // Handle password change
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'change_password') {
     $token = $_POST['csrf_token'] ?? '';
+    $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     if (!function_exists('verify_csrf_token') || !verify_csrf_token($token)) {
+        if ($is_ajax) respond_json(['success' => false, 'message' => 'Invalid CSRF token.']);
         set_profile_msg('danger', 'Invalid CSRF token.');
         header('Location: ' . $_SERVER['REQUEST_URI']); exit;
     }
@@ -127,6 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $new = $_POST['new_password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
     if ($new === '' || $confirm === '' || $new !== $confirm) {
+        if ($is_ajax) respond_json(['success' => false, 'message' => 'New passwords do not match or are empty.']);
         set_profile_msg('danger', 'New passwords do not match or are empty.');
         header('Location: ' . $_SERVER['REQUEST_URI']); exit;
     }
@@ -144,6 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (function_exists('password_verify') && $stored !== '' && password_verify($current, $stored)) $ok = true;
     if (!$ok && $current === $stored) $ok = true; // legacy plain-text
     if (!$ok) {
+        if ($is_ajax) respond_json(['success' => false, 'message' => 'Current password is incorrect.']);
         set_profile_msg('danger', 'Current password is incorrect.');
         header('Location: ' . $_SERVER['REQUEST_URI']); exit;
     }
@@ -152,12 +187,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $upd = mysqli_prepare($conn, "UPDATE tbl_users SET password = ? WHERE id = ?");
     mysqli_stmt_bind_param($upd, 'si', $new, $uid);
     if (mysqli_stmt_execute($upd)) {
+        if ($is_ajax) respond_json(['success' => true, 'message' => 'Password updated successfully.']);
         set_profile_msg('success', 'Password updated successfully.');
     } else {
+        if ($is_ajax) respond_json(['success' => false, 'message' => 'Failed to update password.']);
         set_profile_msg('danger', 'Failed to update password.');
     }
     mysqli_stmt_close($upd);
-    header('Location: ' . $_SERVER['REQUEST_URI']); exit;
+    if (!$is_ajax) {
+        header('Location: ' . $_SERVER['REQUEST_URI']); exit;
+    }
 }
 
 // Pull any flash message
@@ -227,7 +266,7 @@ mysqli_stmt_close($stmt);
                         <h5 class="m-b-10">Profile Settings</h5>
                     </div>
                     <ul class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="index.html">Home</a></li>
+                        <li class="breadcrumb-item"><a href="index.php">Home</a></li>
                         <li class="breadcrumb-item">Profile</li>
                     </ul>
                 </div>
@@ -409,6 +448,72 @@ mysqli_stmt_close($stmt);
         showToast(_profile_msg.type, _profile_msg.text);
     });
     <?php endif; ?>
+    </script>
+    <script>
+    // Submit profile/name/image/password forms via AJAX to avoid full page refresh
+    (function(){
+        function submitFormAJAX(form, onSuccess) {
+            form.addEventListener('submit', function(e){
+                e.preventDefault();
+                var fd = new FormData(form);
+                // ensure action flag present
+                if (!fd.has('action')) fd.append('action', form.querySelector('input[name="action"]') ? form.querySelector('input[name="action"]').value : 'update_profile');
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(function(res){ return res.json(); }).then(function(data){
+                    if (!data) { showToast('danger','Unexpected response'); return; }
+                    if (data.success) {
+                        showToast('success', data.message || 'Saved');
+                        if (onSuccess) onSuccess(data);
+                    } else {
+                        showToast('danger', data.message || 'Failed');
+                    }
+                }).catch(function(err){ showToast('danger', err.message || 'Request failed'); });
+            });
+        }
+
+        // profile image form (first form on the left)
+        var imgForm = document.querySelector('form[enctype="multipart/form-data"]');
+        if (imgForm) {
+            submitFormAJAX(imgForm, function(data){
+                if (data.image_path) {
+                    // convert to absolute-like path similar to server-side logic
+                    var src = data.image_path;
+                    if (!/^https?:\/\//i.test(src) && src.charAt(0) !== '/') {
+                        var base = window.location.pathname.split('/').slice(0, -3).join('/');
+                        if (base === '') base = '/';
+                        src = base.replace(/\/$/, '') + '/' + src.replace(/^\//, '');
+                    }
+                    var avatar = document.getElementById('profileAvatar');
+                    if (avatar) avatar.src = src;
+                }
+            });
+        }
+
+        // name edit form (second form)
+        var nameForm = document.querySelector('form:not([enctype])');
+        if (nameForm) {
+            submitFormAJAX(nameForm, function(data){
+                // Update displayed name on the left
+                if (data.first_name || data.last_name || data.middle_name !== undefined) {
+                    var h = document.querySelector('#profileAvatar').parentNode.querySelector('h5');
+                    if (h) {
+                        var f = data.first_name || nameForm.querySelector('input[name="first_name"]').value || '';
+                        var m = data.middle_name || nameForm.querySelector('input[name="middle_name"]').value || '';
+                        var l = data.last_name || nameForm.querySelector('input[name="last_name"]').value || '';
+                        h.textContent = (f + ' ' + m + ' ' + l).replace(/\s+/g,' ').trim();
+                    }
+                }
+            });
+        }
+
+        // password change form (third form)
+        var pwForm = Array.prototype.slice.call(document.querySelectorAll('form')).filter(function(f){ return f.querySelector('input[name="action"]') && f.querySelector('input[name="action"]').value === 'change_password'; })[0];
+        if (pwForm) submitFormAJAX(pwForm);
+    })();
     </script>
     <!-- end toast setup -->
 

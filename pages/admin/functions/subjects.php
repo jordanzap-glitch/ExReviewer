@@ -71,9 +71,6 @@ function add_subject($conn, $name, $code, $exam_duration = null, $question_items
     return ['success' => false, 'error' => 'Database error (insert failed).'];
 }
 
-?>
-
-<?php
 /**
  * Get all subjects from tbl_subjects
  * @param mysqli $conn

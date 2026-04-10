@@ -13,14 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_session'])) {
         exit;
     }
 
-    // Accept values like "2024" or "2024-01" (from month picker) and extract the year
+    // Accept values like "2024-01" or "2024-01-01" (from month picker)
     $sy_start_raw = $_POST['sy_start'] ?? '';
     $sy_end_raw = $_POST['sy_end'] ?? '';
-    $sy_start = intval(substr($sy_start_raw, 0, 4));
-    $sy_end = intval(substr($sy_end_raw, 0, 4));
-    $status = $_POST['session_status'] ?? 'Inactive';
-    $is_active = ($status === 'Active') ? true : false;
-    $res = add_session($conn, $sy_start, $sy_end, $is_active);
+    // New sessions should become active and deactivate others
+    $is_active = true;
+    // Pass raw date-like inputs to add_session (it will normalize to Y-m-d)
+    $res = add_session($conn, $sy_start_raw, $sy_end_raw, $is_active);
     if ($res['success']) {
         $_SESSION['session_msg'] = ['type' => 'success', 'text' => 'Session added successfully.'];
     } else {
@@ -156,7 +155,7 @@ if (!empty($_SESSION['session_msg'])) {
                                                         <td><?php echo htmlspecialchars($s['sy_end']); ?></td>
                                                         <td><span class="badge <?php echo $badge; ?>"><?php echo $status_text; ?></span></td>
                                                         <td>
-                                                            <a href="#" class="btn-view-session text-secondary me-2 fs-5" data-id="<?php echo (int)$s['id']; ?>" title="View">
+                                                            <a href="#" class="btn-view-session text-info me-2 fs-5" data-id="<?php echo (int)$s['id']; ?>" title="View">
                                                                 <i class="feather-eye"></i>
                                                             </a>
                                                             <a href="#" class="btn-edit-session text-primary me-2 fs-5" data-id="<?php echo (int)$s['id']; ?>" title="Edit">
@@ -288,10 +287,43 @@ if (!empty($_SESSION['session_msg'])) {
         function bindRowButtons(tr) {
             if (!tr) return;
             var view = tr.querySelector('.btn-view-session');
-            if (view && !view._bound) { view._bound = true; view.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function (resp) { if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed'); return; } var d = resp.data || {}; document.getElementById('v_sy_start').textContent = d.sy_start || ''; document.getElementById('v_sy_end').textContent = d.sy_end || ''; document.getElementById('v_sy_status').textContent = d.is_active ? 'Active' : 'Inactive'; var m = new bootstrap.Modal(document.getElementById('viewSessionModal')); m.show(); }).catch(function (err) { showToast('danger', err.message || 'Request failed'); }); }); }
+            if (view && !view._bound) {
+                view._bound = true;
+                view.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var id = this.dataset.id;
+                    if (!id) return;
+                    fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function (resp) {
+                        if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed'); return; }
+                        var d = resp.data || {};
+                        document.getElementById('v_sy_start').textContent = d.sy_start || '';
+                        document.getElementById('v_sy_end').textContent = d.sy_end || '';
+                        document.getElementById('v_sy_status').textContent = d.is_active ? 'Active' : 'Inactive';
+                        var m = new bootstrap.Modal(document.getElementById('viewSessionModal'));
+                        m.show();
+                    }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+                });
+            }
 
             var edit = tr.querySelector('.btn-edit-session');
-            if (edit && !edit._bound) { edit._bound = true; edit.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function (resp) { if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed'); return; } var d = resp.data || {}; document.getElementById('e_session_id').value = d.id || ''; document.getElementById('e_syStart').value = (d.sy_start ? (d.sy_start + '-01') : ''); document.getElementById('e_syEnd').value = (d.sy_end ? (d.sy_end + '-01') : ''); document.getElementById('e_sessionStatus').value = d.is_active ? 'Active' : 'Inactive'; var m = new bootstrap.Modal(document.getElementById('editSessionModal')); m.show(); }).catch(function (err) { showToast('danger', err.message || 'Request failed'); }); }); }
+            if (edit && !edit._bound) {
+                edit._bound = true;
+                edit.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var id = this.dataset.id;
+                    if (!id) return;
+                    fetchJson(baseUrl + '?action=view&id=' + encodeURIComponent(id), { method: 'GET' }).then(function (resp) {
+                        if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Failed'); return; }
+                        var d = resp.data || {};
+                        document.getElementById('e_session_id').value = d.id || '';
+                        document.getElementById('e_syStart').value = (d.sy_start ? d.sy_start.substr(0,7) : '');
+                        document.getElementById('e_syEnd').value = (d.sy_end ? d.sy_end.substr(0,7) : '');
+                        document.getElementById('e_sessionStatus').value = d.is_active ? 'Active' : 'Inactive';
+                        var m = new bootstrap.Modal(document.getElementById('editSessionModal'));
+                        m.show();
+                    }).catch(function (err) { showToast('danger', err.message || 'Request failed'); });
+                });
+            }
 
             var del = tr.querySelector('.btn-delete-session');
             if (del && !del._bound) { del._bound = true; del.addEventListener('click', function (e) { e.preventDefault(); var id = this.dataset.id; if (!id) return; document.getElementById('delete_session_id').value = id; var m = new bootstrap.Modal(document.getElementById('deleteSessionModal')); m.show(); }); }
@@ -312,8 +344,8 @@ if (!empty($_SESSION['session_msg'])) {
                     if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Add failed'); return; }
                     showToast('success', 'Session added');
                     var id = resp.id || (resp.data && resp.data.id) || '';
-                    var syStart = (resp.data && resp.data.sy_start) || (fd.get('sy_start') ? fd.get('sy_start').substr(0,4) : '');
-                    var syEnd = (resp.data && resp.data.sy_end) || (fd.get('sy_end') ? fd.get('sy_end').substr(0,4) : '');
+                    var syStart = (resp.data && resp.data.sy_start) ? resp.data.sy_start.substr(0,7) : (fd.get('sy_start') || '');
+                    var syEnd = (resp.data && resp.data.sy_end) ? resp.data.sy_end.substr(0,7) : (fd.get('sy_end') || '');
                     var isActive = (resp.data && resp.data.is_active) ? 1 : 0;
                     var statusText = isActive ? 'Active' : 'Inactive';
                     var badge = isActive ? 'bg-success' : 'bg-secondary';
@@ -353,8 +385,8 @@ if (!empty($_SESSION['session_msg'])) {
                     if (!resp || !resp.success) { showToast('danger', resp && resp.error ? resp.error : 'Update failed'); return; }
                     showToast('success', 'Session updated');
                     var id = fd.get('id');
-                    var syStart = fd.get('sy_start') ? fd.get('sy_start').substr(0,4) : '';
-                    var syEnd = fd.get('sy_end') ? fd.get('sy_end').substr(0,4) : '';
+                    var syStart = fd.get('sy_start') ? fd.get('sy_start') : '';
+                    var syEnd = fd.get('sy_end') ? fd.get('sy_end') : '';
                     var isActive = fd.get('session_status') === 'Active';
                     var badge = isActive ? 'bg-success' : 'bg-secondary';
                     var statusText = isActive ? 'Active' : 'Inactive';
